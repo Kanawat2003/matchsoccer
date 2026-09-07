@@ -64,9 +64,9 @@ try { db.exec('ALTER TABLE matches ADD COLUMN open_for_join INTEGER NOT NULL DEF
 const count = db.prepare('SELECT COUNT(*) AS n FROM venues').get().n
 if (!count) {
  const add = db.prepare('INSERT INTO venues (name,area,address,rating,price_per_hour,roof,field_types) VALUES (?,?,?,?,?,?,?)')
- add.run('Goal Arena Rama 9','พระราม 9 • 2.3 กม.','ถ.พระราม 9 กรุงเทพฯ',4.8,1200,1,'5v5,7v7')
- add.run('SoccerPro Ladprao','ลาดพร้าว • 4.1 กม.','ลาดพร้าว กรุงเทพฯ',4.6,900,1,'5v5,7v7')
- add.run('Kick Off Stadium','รัชดา • 6.3 กม.','รัชดา กรุงเทพฯ',4.7,1000,0,'5v5,7v7,11v11')
+ add.run('Goal Arena Rama 9','\\u0e1e\\u0e23\\u0e30\\u0e23\\u0e32\\u0e21 9 \\u00b7 2.3 \\u0e01\\u0e21.','\\u0e16\\u0e19\\u0e19\\u0e1e\\u0e23\\u0e30\\u0e23\\u0e32\\u0e21 9 \\u0e01\\u0e23\\u0e38\\u0e07\\u0e40\\u0e17\\u0e1e\\u0e2f',4.8,1200,1,'5v5,7v7')
+ add.run('SoccerPro Ladprao','\\u0e25\\u0e32\\u0e14\\u0e1e\\u0e23\\u0e49\\u0e32\\u0e27 \\u00b7 4.1 \\u0e01\\u0e21.','\\u0e25\\u0e32\\u0e14\\u0e1e\\u0e23\\u0e49\\u0e32\\u0e27 \\u0e01\\u0e23\\u0e38\\u0e07\\u0e40\\u0e17\\u0e1e\\u0e2f',4.6,900,1,'5v5,7v7')
+ add.run('Kick Off Stadium','\\u0e23\\u0e31\\u0e0a\\u0e14\\u0e32 \\u00b7 6.3 \\u0e01\\u0e21.','\\u0e23\\u0e31\\u0e0a\\u0e14\\u0e32 \\u0e01\\u0e23\\u0e38\\u0e07\\u0e40\\u0e17\\u0e1e\\u0e2f',4.7,1000,0,'5v5,7v7,11v11')
 }
 try { db.exec(`CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,type TEXT NOT NULL,title TEXT NOT NULL,message TEXT NOT NULL,read INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);`) } catch {}
 

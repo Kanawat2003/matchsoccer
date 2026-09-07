@@ -1,4 +1,4 @@
-export const isBrokenThai = (value) => typeof value === 'string' && value.includes('เธ') && (value.includes('เน') || value.includes('�') || /[ˆ‰]/.test(value))
+﻿export const isBrokenThai = (value) => typeof value === 'string' && (value.includes('�') || /[\u0080-\u009F]/.test(value))
 export const fallbackMessage = (status) => {
  if (status === 400) return 'ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบข้อมูลแล้วลองใหม่อีกครั้ง'
  if (status === 401) return 'กรุณาเข้าสู่ระบบใหม่'
