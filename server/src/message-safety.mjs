@@ -1,4 +1,4 @@
-﻿const MOJIBAKE_RE=/[ÃÂà-ÿ]|เธ.|เน.|เเธ|€|™|œ|š|‡|‰|›|‹|†|ƒ|\u0080-\u009F/
+const MOJIBAKE_RE=/[ÃÂà-ÿ]|เธ.|เน.|เเธ|€|™|œ|š|‡|‰|›|‹|†|ƒ|\u0080-\u009F/
 export const isBrokenThai = (value) => {
  if(typeof value !== 'string') return false
  if(value.includes('�') || /[\u0080-\u009F]/.test(value)) return true
@@ -13,10 +13,10 @@ export const fallbackMessage = (status) => {
  return 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง'
 }
 export const safeBody = (body,status) => {
+ if(typeof body === 'string') return isBrokenThai(body) ? fallbackMessage(status) : body
  if(body===null || typeof body!=='object') return body
  if(Array.isArray(body)) return body.map(v=>safeBody(v,status))
- const out={...body}
- if(isBrokenThai(out.error)) out.error=fallbackMessage(status)
- if(isBrokenThai(out.message)) out.message=fallbackMessage(status)
+ const out={}
+ for(const [key,value] of Object.entries(body)) out[key]=safeBody(value,status)
  return out
 }
