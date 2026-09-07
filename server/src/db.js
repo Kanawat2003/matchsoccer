@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3'
+﻿import Database from 'better-sqlite3'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 
@@ -99,3 +99,4 @@ CREATE INDEX IF NOT EXISTS idx_split_bill_members_bill_paid ON split_bill_member
 `) } catch (error) { console.error('index migration failed', error) }
 
 export default db
+
