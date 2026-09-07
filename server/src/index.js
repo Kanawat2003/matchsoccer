@@ -7,7 +7,8 @@ import db from './db.js'
 import {safeBody, fallbackMessage, isBrokenThai} from './message-safety.mjs'
 
 const app = express()
-const PORT = 4001
+const PORT = Number(process.env.PORT) || 4001
+const HOST = process.env.HOST || '0.0.0.0'
 const SECRET = process.env.JWT_SECRET || 'porsball-local-dev-secret'
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) throw new Error('JWT_SECRET is required in production')
 
@@ -414,4 +415,4 @@ app.patch('/api/admin/venues/:id/owner', auth, (req,res) => {
  res.json(db.prepare('SELECT * FROM venues WHERE id=?').get(venue.id))
 })
 
-app.listen(PORT, () => console.log('PorsBall API running at http://127.0.0.1:'+PORT))
+app.listen(PORT, HOST, () => console.log('PorsBall API running on '+HOST+':'+PORT))
