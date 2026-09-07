@@ -1,0 +1,14 @@
+{
+  "name": "porsball-server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {"dev":"node --watch src/index.js","start":"node src/index.js"},
+  "dependencies": {
+    "bcryptjs":"^3.0.2",
+    "better-sqlite3":"^12.4.1",
+    "cors":"^2.8.5",
+    "express":"^5.1.0",
+    "jsonwebtoken":"^9.0.2"
+  }
+}

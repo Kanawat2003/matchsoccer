@@ -1,0 +1,40 @@
+.owner-dashboard{margin-top:0;padding:0;background:transparent;border:0;box-shadow:none;overflow:visible}
+.owner-dashboard .section-head{padding:24px 0 8px;gap:16px}
+.owner-dashboard .owner-grid{margin-top:18px}
+.owner-dashboard .owner-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.owner-dashboard .owner-grid>div{min-width:0}
+.owner-dashboard .owner-grid b{display:block;font-size:24px;line-height:1.2}
+.owner-dashboard .owner-grid span{display:block;margin-top:6px;color:#8fa195;font-size:12px}
+.owner-dashboard .owner-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:18px}
+.owner-dashboard .owner-card{margin:0;padding:20px;display:flex;flex-direction:column;min-width:0}
+.owner-card-top{display:flex;justify-content:space-between;gap:10px;align-items:center;color:#8fa195;font-size:12px;margin-bottom:10px}
+.owner-field-badge{padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.07);color:#c8d5cc}
+.owner-dashboard .owner-card h3{margin:0 0 8px;font-size:20px}
+.owner-dashboard .owner-meta{color:#8fa195;font-size:13px;line-height:1.7;margin:0 0 16px}
+.owner-dashboard .owner-meta b{color:#fff}
+.owner-dashboard .owner-card .confirm{margin-top:auto}
+.owner-dashboard .owner-empty{margin-top:18px;text-align:center;padding:36px 20px;color:#8fa195}
+.owner-dashboard .owner-error{margin-top:16px;color:#ff9a9a;padding:16px}
+.owner-dashboard .owner-success{margin-top:16px;color:#8ff0b4;padding:16px}
+.owner-edit-modal .booking-content{display:grid;gap:12px}
+.owner-edit-modal label{display:grid;gap:6px;color:#b9c7bd;font-size:13px}
+.owner-edit-modal label input{width:100%;box-sizing:border-box}
+.owner-edit-modal .owner-check{display:flex;align-items:center;gap:8px}
+.owner-edit-modal .owner-check input{width:auto}
+@media(max-width:900px){.owner-dashboard .owner-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.owner-dashboard .owner-list{grid-template-columns:1fr}.owner-dashboard .owner-grid{grid-template-columns:1fr 1fr}.owner-dashboard .section-head{align-items:flex-start}.owner-card-top{align-items:flex-start}.owner-edit-modal{width:min(100%,560px);max-height:calc(100vh - 32px);overflow-y:auto}.owner-edit-modal .booking-content{padding-bottom:18px}}
+@media(max-width:500px){.owner-dashboard .owner-grid{grid-template-columns:1fr}.owner-edit-modal{max-height:calc(100vh - 20px)}}
+
+.owner-venue-status{margin:2px 0 16px;padding:11px 12px;border:1px solid rgba(255,255,255,.07);border-radius:12px;background:rgba(255,255,255,.025)}
+.owner-venue-status>div{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700}
+.owner-venue-status .is-active{color:#ffd27d}.owner-venue-status .is-free{color:#8ff0b4}
+.owner-status-dot{width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 0 4px rgba(255,255,255,.04)}
+.owner-venue-status small{display:block;margin-top:6px;color:#7f9085;font-size:11px;overflow-wrap:anywhere}
+@media(max-width:500px){.owner-venue-status{padding:10px}.owner-dashboard .owner-card h3{font-size:18px}}
+
+/* Owner workspace polish */
+.owner-dashboard{background:transparent}.owner-dashboard .owner-grid>div{position:relative;overflow:hidden}.owner-dashboard .owner-grid>div:after{content:"";position:absolute;right:-28px;top:-28px;width:80px;height:80px;border-radius:50%;background:rgba(168,240,74,.05)}
+.owner-dashboard .owner-card{background:linear-gradient(145deg,#102217,#0b1910);border-color:rgba(255,255,255,.09);box-shadow:0 14px 34px rgba(0,0,0,.20);transition:.2s}.owner-dashboard .owner-card:hover{transform:translateY(-3px);border-color:rgba(168,240,74,.25);box-shadow:0 20px 42px rgba(0,0,0,.28)}
+.owner-dashboard .owner-card h3{letter-spacing:-.025em}.owner-dashboard .owner-meta{line-height:1.8}.owner-field-badge{border:1px solid rgba(255,255,255,.08)}
+.owner-venue-status{background:rgba(255,255,255,.025);border-color:rgba(255,255,255,.08)}
+.owner-dashboard .confirm{min-height:44px}

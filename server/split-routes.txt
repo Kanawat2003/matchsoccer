@@ -1,0 +1,51 @@
+app.post('/api/split-bills', auth, (req,res) => {
+ const {bookingId,shareCount,names=[]} = req.body
+ const booking = db.prepare('SELECT * FROM bookings WHERE id=? AND user_id=?').get(bookingId,req.user.id)
+ if (!booking) return res.status(404).json({error:'ไม่พบการจองของคุณ'})
+ const count=Number(shareCount)
+ if (!Number.isInteger(count)||count<2||count>30) return res.status(400).json({error:'จำนวนคนต้องอยู่ระหว่าง 2 ถึง 30'})
+ const share=Math.ceil(booking.total_price/count)
+ const existing=db.prepare("SELECT * FROM split_bills WHERE booking_id=? AND owner_user_id=? AND status='open'").get(booking.id,req.user.id)
+ if(existing){
+  db.prepare('UPDATE split_bills SET share_count=?,share_amount=?,total_amount=? WHERE id=?').run(count,share,booking.total_price,existing.id)
+  const members=db.prepare('SELECT * FROM split_bill_members WHERE split_bill_id=? ORDER BY id').all(existing.id)
+  if(members.length>count) db.prepare('DELETE FROM split_bill_members WHERE split_bill_id=? AND id IN (SELECT id FROM split_bill_members WHERE split_bill_id=? ORDER BY id DESC LIMIT ?)').run(existing.id,existing.id,members.length-count)
+  const current=db.prepare('SELECT * FROM split_bill_members WHERE split_bill_id=? ORDER BY id').all(existing.id)
+  const add=db.prepare('INSERT INTO split_bill_members(split_bill_id,name) VALUES(?,?)')
+  for(let i=current.length;i<count;i++) add.run(existing.id,names[i]||('เพื่อนคนที่ '+(i+1)))
+  const updated=db.prepare('SELECT * FROM split_bill_members WHERE split_bill_id=? ORDER BY id').all(existing.id)
+  const rename=db.prepare('UPDATE split_bill_members SET name=? WHERE id=? AND paid=0')
+  updated.forEach((m,i)=>{if(names[i]) rename.run(names[i],m.id)})
+  return res.json({id:existing.id,shareAmount:share,shareCount:count,totalAmount:booking.total_price})
+ }
+ const result=db.prepare('INSERT INTO split_bills(booking_id,owner_user_id,total_amount,share_count,share_amount) VALUES(?,?,?,?,?)').run(booking.id,req.user.id,booking.total_price,count,share)
+ const add=db.prepare('INSERT INTO split_bill_members(split_bill_id,name) VALUES(?,?)')
+ for(let i=0;i<count;i++) add.run(result.lastInsertRowid,names[i]||('เพื่อนคนที่ '+(i+1)))
+ res.status(201).json({id:result.lastInsertRowid,shareAmount:share,shareCount:count,totalAmount:booking.total_price})
+})
+app.get('/api/split-bills/booking/:bookingId', auth, (req,res) => {
+ const bill=db.prepare("SELECT * FROM split_bills WHERE booking_id=? AND owner_user_id=? AND status='open'").get(req.params.bookingId,req.user.id)
+ if(!bill) return res.status(404).json({error:'ยังไม่มีบิลสำหรับการจองนี้'})
+ const members=db.prepare('SELECT * FROM split_bill_members WHERE split_bill_id=? ORDER BY id').all(bill.id)
+ res.json({...bill,members})
+})
+app.get('/api/split-bills/:id', auth, (req,res) => {
+ const bill=db.prepare('SELECT * FROM split_bills WHERE id=? AND owner_user_id=?').get(req.params.id,req.user.id)
+ if(!bill) return res.status(404).json({error:'ไม่พบบิล'})
+ const members=db.prepare('SELECT * FROM split_bill_members WHERE split_bill_id=? ORDER BY id').all(bill.id)
+ res.json({...bill,members})
+})
+app.post('/api/split-bills/:billId/members/:memberId/pay', auth, (req,res) => {
+ const bill=db.prepare("SELECT * FROM split_bills WHERE id=? AND owner_user_id=? AND status='open'").get(req.params.billId,req.user.id)
+ if(!bill) return res.status(404).json({error:'ไม่พบบิลหรือบิลถูกปิดแล้ว'})
+ db.prepare("UPDATE split_bill_members SET paid=1,paid_at=CURRENT_TIMESTAMP WHERE id=? AND split_bill_id=?").run(req.params.memberId,bill.id)
+ res.json({ok:true})
+})
+app.post('/api/split-bills/:id/close', auth, (req,res) => {
+ const bill=db.prepare("SELECT * FROM split_bills WHERE id=? AND owner_user_id=? AND status='open'").get(req.params.id,req.user.id)
+ if(!bill) return res.status(404).json({error:'ไม่พบบิลหรือบิลถูกปิดแล้ว'})
+ const unpaid=db.prepare('SELECT COUNT(*) n FROM split_bill_members WHERE split_bill_id=? AND paid=0').get(bill.id).n
+ if(unpaid>0) return res.status(409).json({error:`ยังมีสมาชิกที่ยังไม่จ่าย ${unpaid} คน`})
+ db.prepare("UPDATE split_bills SET status='closed' WHERE id=?").run(bill.id)
+ res.json({ok:true,message:'ปิดบิลสำเร็จ'})
+})

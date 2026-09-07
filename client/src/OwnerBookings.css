@@ -1,0 +1,35 @@
+.owner-bookings{padding:0}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.owner-bookings .section-head{padding:24px 0 8px;gap:16px}
+.owner-booking-summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-top:18px}
+.owner-booking-summary>div{padding:14px 16px}
+.owner-booking-summary b{display:block;font-size:20px;line-height:1.2}.owner-booking-revenue b{font-size:18px}
+.owner-booking-summary span{display:block;margin-top:5px;color:#8fa195;font-size:12px}
+.owner-booking-list{display:grid;gap:12px;margin-top:18px}
+.owner-booking-card{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;gap:16px;align-items:center;padding:18px}
+.owner-booking-card>div{min-width:0}
+.owner-booking-card h3{margin:0 0 6px;overflow-wrap:anywhere}
+.owner-booking-card p{margin:0;color:#8fa195;font-size:13px;overflow-wrap:anywhere}
+.owner-booking-user{display:flex;flex-direction:column;gap:4px;min-width:0}
+.owner-booking-user span{color:#8fa195;font-size:12px;overflow:hidden;text-overflow:ellipsis}
+.owner-booking-price{text-align:right;font-weight:700}
+.owner-booking-price small{display:block;margin-top:6px}
+.owner-status{font-size:11px;font-weight:700;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.07);color:#c8d5cc}
+.status-confirmed,.status-upcoming{color:#8ff0b4;background:rgba(60,190,110,.12)}
+.status-in_progress{color:#ffd27d;background:rgba(255,184,77,.12)}
+.status-cancelled,.status-expired{color:#ff9a9a;background:rgba(255,100,100,.12)}
+.status-completed{color:#9fc7ff;background:rgba(85,150,255,.12)}
+.owner-error{margin-top:16px;color:#ff9a9a;padding:16px}
+@media(max-width:700px){.owner-booking-summary{grid-template-columns:1fr 1fr;gap:8px}.owner-booking-summary>div{padding:12px}.owner-booking-card{grid-template-columns:1fr;padding:16px}.owner-booking-price{text-align:left}.owner-bookings .section-head{align-items:flex-start}.owner-booking-user span{overflow-wrap:anywhere}}
+@media(max-width:420px){.owner-booking-summary{grid-template-columns:1fr}.owner-booking-summary>div{display:flex;align-items:baseline;justify-content:space-between;gap:12px}.owner-booking-summary span{margin-top:0}}
+
+.owner-booking-filters{display:flex;gap:8px;overflow-x:auto;padding:14px 0 2px;scrollbar-width:none}
+.owner-booking-filters::-webkit-scrollbar{display:none}
+.owner-booking-filters button{border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#aebbb2;border-radius:999px;padding:9px 13px;font-size:12px;white-space:nowrap;cursor:pointer}
+.owner-booking-filters button.active{background:rgba(60,190,110,.14);border-color:rgba(60,190,110,.35);color:#8ff0b4}
+.owner-booking-filters button:focus-visible{outline:2px solid #8ff0b4;outline-offset:2px}
+
+/* Booking operations polish */
+.owner-booking-card{background:linear-gradient(145deg,#102217,#0b1910);border-color:rgba(255,255,255,.09);box-shadow:0 12px 30px rgba(0,0,0,.18);transition:.18s}.owner-booking-card:hover{border-color:rgba(168,240,74,.20);transform:translateY(-2px)}
+.owner-booking-summary>div{background:linear-gradient(145deg,#102217,#0b1910);border-color:rgba(255,255,255,.09);box-shadow:0 10px 25px rgba(0,0,0,.16)}
+.owner-booking-filters button,.admin-booking-filters button{transition:.16s}.owner-booking-filters button:hover,.admin-booking-filters button:hover{border-color:rgba(168,240,74,.28);color:#d8eadb}
+.owner-status{border:1px solid rgba(255,255,255,.06)}

@@ -1,0 +1,81 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+client/dist/
+server/dist/
+
+# Local database / runtime files
+server/*.db
+server/*.db-shm
+server/*.db-wal
+server/data/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Local screenshots / generated checks
+*.png
+*.jpg
+*.jpeg
+
+# Temporary repair / patch scripts and backups
+*.bak
+*.bak-*
+*.backup
+*.patchcheck
+*.accidental-truncated
+*.before-*
+*.pre-*
+*.preview
+*backup*
+*restored*
+*cp874*
+*ftfy*
+*mojibake*
+
+# One-off patch/repair scripts kept only on the developer machine
+patch-*.mjs
+patch_*.py
+patch_*.cjs
+patch_*.js
+fix-*.ps1
+*.ps1
+*.cmd
+fix_*.py
+repair_*.py
+repair_*.mjs
+restore_*.py
+probe.py
+scan_bad.py
+runfix.*
+check-split.mjs
+app.js
+style.css
+tmp* 
+client/*.new.txt
+client/patch-*.mjs
+client/apply-*.mjs
+server/patch-*
+server/apply-*.mjs
+server/backfill-*.mjs
+server/cleanup-*.mjs
+server/inspect-*.mjs
+server/check-db.js

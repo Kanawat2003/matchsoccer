@@ -1,0 +1,34 @@
+import {useCallback,useEffect,useRef,useState} from 'react'
+import {api} from './api'
+import type {Venue,OwnerBookingRow} from './api'
+import './OwnerDashboard.css'
+
+export default function OwnerDashboard(){
+ const [venues,setVenues]=useState<Venue[]>([]),[bookings,setBookings]=useState<OwnerBookingRow[]>([]),[editing,setEditing]=useState<Venue|null>(null),[saving,setSaving]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(''),[message,setMessage]=useState(''),[now,setNow]=useState(()=>Date.now())
+ const loadedRef=useRef(false)
+ useEffect(()=>{const timer=window.setInterval(()=>setNow(Date.now()),30000);return()=>window.clearInterval(timer)},[])
+ const load=useCallback(async()=>{if(!loadedRef.current)setLoading(true);setError('');try{const [v,b]=await Promise.all([api.ownerVenues(),api.ownerBookings()]);setVenues(v);setBookings(b)}catch(e){setError(e instanceof Error?e.message:'โหลดข้อมูลไม่สำเร็จ')}finally{loadedRef.current=true;setLoading(false)}},[])
+ useEffect(()=>{const timer=window.setTimeout(()=>void load(),0);const onFocus=()=>void load();const onVisible=()=>{if(document.visibilityState==='visible')void load()};window.addEventListener('focus',onFocus);document.addEventListener('visibilitychange',onVisible);const interval=window.setInterval(()=>void load(),30000);return()=>{window.clearTimeout(timer);window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',onVisible);window.clearInterval(interval)}},[load])
+ const save=async()=>{if(!editing)return;setSaving(true);setError('');setMessage('');try{const v=await api.updateOwnerVenue(editing.id,{name:editing.name.trim(),area:editing.area.trim(),address:editing.address.trim(),price_per_hour:editing.price_per_hour,roof:editing.roof,field_types:editing.field_types.trim()});setVenues(x=>x.map(a=>a.id===v.id?v:a));setEditing(null);setMessage('บันทึกข้อมูลสนามเรียบร้อยแล้ว');window.dispatchEvent(new Event('porsball:data-changed'))}catch(e){setError(e instanceof Error?e.message:'บันทึกไม่สำเร็จ')}finally{setSaving(false)}}
+ const confirmed=bookings.filter(b=>String(b.status).toLowerCase()==='confirmed')
+ const revenue=confirmed.reduce((sum,b)=>sum+Number(b.total_price||0),0)
+ const venueInfo=(venue:Venue)=>{
+  const items=confirmed.filter(b=>b.venue_id===venue.id || (b.venue_id==null && b.venue_name===venue.name))
+  const windowOf=(b:OwnerBookingRow)=>({start:new Date(`${b.booking_date}T${b.start_time}:00+07:00`).getTime(),end:new Date(`${b.booking_date}T${b.end_time}:00+07:00`).getTime()})
+  const active=items.find(b=>{const w=windowOf(b);return now>=w.start&&now<w.end})
+  const upcoming=items.filter(b=>windowOf(b).start>now).sort((a,b)=>`${a.booking_date}T${a.start_time}`.localeCompare(`${b.booking_date}T${b.start_time}`))[0]
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date())
+  const todayCount=items.filter(b=>b.booking_date===today).length
+  return {active,upcoming,todayCount}
+ }
+ const activeCount=venues.reduce((sum,v)=>sum+(venueInfo(v).active?1:0),0)
+ const upcomingCount=venues.reduce((sum,v)=>sum+(venueInfo(v).upcoming?1:0),0)
+ return <section className="panel owner-dashboard">
+  <div className="section-head"><div><p className="eyebrow">OWNER</p><h2>จัดการสนามของฉัน</h2><p>แก้ไขข้อมูลสนาม ราคา และรายละเอียดที่ลูกค้าจะเห็น</p></div><button type="button" className="link" onClick={()=>void load()} disabled={loading} aria-busy={loading} aria-label="รีเฟรชข้อมูลเจ้าของสนาม">{loading?'กำลังโหลด...':'รีเฟรช'}</button></div>
+  {message&&<div className="panel owner-success" role="status" aria-live="polite">{message}</div>}{error&&<div className="panel owner-error" role="alert" aria-live="assertive">{error}</div>}
+  {!loading&&<div className="owner-grid"><div className="panel"><b>{venues.length}</b><span>สนามที่ดูแล</span></div><div className="panel"><b>{activeCount}</b><span>กำลังมีลูกค้า</span></div><div className="panel"><b>{upcomingCount}</b><span>มีคิวถัดไป</span></div><div className="panel"><b>฿{revenue.toLocaleString()}</b><span>ยอดจองที่ยืนยัน</span></div></div>}
+  {loading&&!venues.length&&<div className="panel owner-empty">กำลังโหลดข้อมูลสนาม...</div>}
+  {!loading&&venues.length?<div className="owner-list">{venues.map(v=><article className="panel owner-card" key={v.id}><div className="owner-card-top"><span className="owner-field-badge">สนาม #{v.id}</span><span>{v.roof?'มีหลังคา':'กลางแจ้ง'}</span></div><h3>{v.name}</h3><p className="owner-meta">{v.area} • {v.field_types}<br/><b>฿{v.price_per_hour.toLocaleString()}/ชม.</b><br/>{v.address}</p>{(()=>{const info=venueInfo(v);return <div className="owner-venue-status"><div className={info.active?'is-active':'is-free'}><span className="owner-status-dot"/>{info.active?'กำลังมีลูกค้าใช้งาน':'ว่างตอนนี้'}</div>{info.upcoming?<small>คิวถัดไป {info.upcoming.booking_date} • {info.upcoming.start_time}–{info.upcoming.end_time}</small>:<small>{info.todayCount?`วันนี้มี ${info.todayCount} รายการจอง`:'วันนี้ยังไม่มีรายการจอง'}</small>}</div>})()}<button type="button" className="confirm" onClick={()=>{setMessage('');setEditing({...v})}}>แก้ไขข้อมูล</button></article>)}</div>:!loading&&!error&&<div className="panel owner-empty">ยังไม่มีสนามที่คุณดูแล</div>}
+  {editing&&<div className="modal"><div className="booking owner-edit-modal" role="dialog" aria-modal="true" aria-label="แก้ไขข้อมูลสนาม"><button type="button" className="close" aria-label="ปิดหน้าต่างแก้ไขสนาม" onClick={()=>setEditing(null)}>×</button><div className="booking-content"><p className="eyebrow">EDIT VENUE</p><h2>แก้ไขสนาม</h2><label>ชื่อสนาม<input value={editing.name} onChange={e=>setEditing({...editing,name:e.target.value})} aria-label="ชื่อสนาม" autoComplete="organization" required/></label><label>พื้นที่<input value={editing.area} onChange={e=>setEditing({...editing,area:e.target.value})} aria-label="พื้นที่" required/></label><label>ที่อยู่<input value={editing.address} onChange={e=>setEditing({...editing,address:e.target.value})} aria-label="ที่อยู่สนาม" autoComplete="street-address" required/></label><label>ราคาต่อชั่วโมง<input type="number" min="0" value={editing.price_per_hour} onChange={e=>setEditing({...editing,price_per_hour:Math.max(0,Number(e.target.value)||0)})} aria-label="ราคาต่อชั่วโมง" inputMode="decimal" required/></label><label>ประเภทสนาม<input value={editing.field_types} onChange={e=>setEditing({...editing,field_types:e.target.value})} aria-label="ประเภทสนาม" required/></label><label className="owner-check"><input type="checkbox" checked={!!editing.roof} onChange={e=>setEditing({...editing,roof:e.target.checked?1:0})} aria-label="มีหลังคา"/> มีหลังคา</label><button type="button" className="confirm" disabled={saving||!editing.name.trim()||!editing.area.trim()||!editing.address.trim()||editing.price_per_hour<=0} aria-busy={saving} onClick={save}>{saving?'กำลังบันทึก...':'บันทึกการเปลี่ยนแปลง'}</button></div></div></div>}
+ </section>
+}

@@ -1,0 +1,1 @@
+// Permission test moved to permissions-test.cjs because the server package is ESM.
