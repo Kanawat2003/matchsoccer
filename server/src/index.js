@@ -37,7 +37,7 @@ const auth = (req,res,next) => {
 const notify = (userId,type,title,message) => {
  const titles={booking:'มีการจองสนามใหม่',cancel:'การจองถูกยกเลิก',match_close:'เจ้าของนัดปิดรับคน',join:'มีคนเข้าร่วมนัด',leave:'มีคนออกจากนัด',remove:'คุณถูกนำออกจากนัด'}
  const safeTitle=isBrokenThai(title)?(titles[type]||'มีการแจ้งเตือนใหม่'):title
- const safeMessage=isBrokenThai(message)?fallbackMessage(409):message
+ const safeMessage=isBrokenThai(message)?({booking:'มีการจองสนามใหม่',cancel:'การจองถูกยกเลิก',match_close:'เจ้าของนัดปิดรับคน',join:'มีคนเข้าร่วมนัด',leave:'มีคนออกจากนัด',remove:'คุณถูกนำออกจากนัด'}[type]||'มีการแจ้งเตือนใหม่'):message
  return db.prepare('INSERT INTO notifications(user_id,type,title,message) VALUES(?,?,?,?)').run(userId,type,safeTitle,safeMessage)
 }
 
@@ -150,7 +150,7 @@ if(!email||!/^\d{6}$/.test(code)||newPassword.length<8) return res.status(400).j
  const hash=await bcrypt.hash(newPassword,10)
  db.prepare('UPDATE users SET password_hash=?, auth_version=auth_version+1 WHERE id=?').run(hash,user.id)
  db.prepare('UPDATE password_resets SET used=1 WHERE id=?').run(row.id)
- res.json({ok:true,message:'เน€เธ›เธฅเธตเนˆเธขเธ™เธฃเธซเธฑเธชเธœเนˆเธฒเธ™เน€เธฃเธตเธขเธšเธฃเน‰เธญเธขเนเธฅเน‰เธง'})
+ res.json({ok:true,message:'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว'})
 })
 app.get('/api/notifications', auth, (req,res) => { const rows=db.prepare('SELECT * FROM notifications WHERE user_id=? ORDER BY id DESC LIMIT 50').all(req.user.id); res.json(rows) })
 app.post('/api/notifications/:id/read', auth, (req,res) => { db.prepare('UPDATE notifications SET read=1 WHERE id=? AND user_id=?').run(req.params.id,req.user.id); res.json({ok:true}) })
@@ -281,7 +281,7 @@ app.post('/api/matches/:id/join', auth, (req,res) => {
  if (existing) return res.status(409).json({error:'เธ"เธธเธ"เน€เธ\\\'เน‰เธฒเธฃเนˆเธงเธกเธ™เธฑเธ"เธ™เธตเน‰เนเธฅเน‰เธง'})
  try { db.prepare('INSERT INTO match_players(match_id,user_id) VALUES(?,?)').run(match.id,req.user.id); if(req.user.id!==match.creator_id){ const u=db.prepare('SELECT name FROM users WHERE id=?').get(req.user.id); notify(match.creator_id,'join','เธกเธตเธ"เธ™เน€เธ\\\'เน‰เธฒเธฃเนˆเธงเธกเธ™เธฑเธ"',`${u?.name||'เธœเธนเน‰เน€เธฅเนˆเธ™'} เน€เธเนเธฒเธฃเนเธงเธกเธเธฑเธ” ${match.title}`) } }
  catch { return res.status(409).json({error:'เน"เธกเนˆเธชเธฒเธกเธฒเธฃเธ–เน€เธ\\\'เน‰เธฒเธฃเนˆเธงเธกเธ™เธฑเธ"เธ™เธตเน‰เน"เธ"เน‰ เธเธฃเธธเธ"เธฒเธฅเธญเธ‡เนƒเธซเธกเนˆเธญเธตเธเธ"เธฃเธฑเน‰เธ‡'}) }
- res.json({ok:true,message:'เน€เธ\\\'เน‰เธฒเธฃเนˆเธงเธกเธ™เธฑเธ"เธชเธณเน€เธฃเน‡เธˆ'})
+ res.json({ok:true,message:'เข้าร่วมนัดสำเร็จ'})
 })
 
 app.get('/api/matches/:id/players', auth, (req,res) => {
@@ -398,7 +398,7 @@ app.post('/api/split-bills/:id/close', auth, (req,res) => {
  if(unpaid>0) return res.status(409).json({error:'เธขเธฑเธ‡เธกเธตเธชเธกเธฒเธŠเธดเธเธ—เธตเนˆเธขเธฑเธ‡เน"เธกเนˆเธˆเนˆเธฒเธข '+unpaid+' เธ"เธ™'})
  db.prepare("UPDATE split_bills SET status='closed' WHERE id=?").run(bill.id)
  db.prepare('UPDATE matches SET open_for_join=0 WHERE booking_id=?').run(bill.booking_id)
- res.json({ok:true,message:'เธ›เธดเธ"เธšเธดเธฅเธชเธณเน€เธฃเน‡เธˆ'})
+ res.json({ok:true,message:'ปิดบิลเรียบร้อยแล้ว'})
 })
 
 app.patch('/api/admin/venues/:id/owner', auth, (req,res) => {
