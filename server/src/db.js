@@ -1,4 +1,4 @@
-﻿import Database from 'better-sqlite3'
+import Database from 'better-sqlite3'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 
@@ -57,16 +57,16 @@ try { db.exec('ALTER TABLE matches ADD COLUMN booking_id INTEGER REFERENCES book
 try { db.exec('ALTER TABLE matches ADD COLUMN open_for_join INTEGER NOT NULL DEFAULT 0') } catch {}
 
 const venueSeed = [
- [1,'Goal Arena Rama 9','\u0e1e\u0e23\u0e30\u0e23\u0e32\u0e21 9 \u00b7 2.3 \u0e01\u0e21.','\u0e16\u0e19\u0e19\u0e1e\u0e23\u0e30\u0e23\u0e32\u0e21 9 \u0e01\u0e23\u0e38\u0e07\u0e40\u0e17\u0e1e\u0e2f',4.8,1200,1,'5v5,7v7'],
- [2,'SoccerPro Ladprao','\u0e25\u0e32\u0e14\u0e1e\u0e23\u0e49\u0e32\u0e27 \u00b7 4.1 \u0e01\u0e21.','\u0e25\u0e32\u0e14\u0e1e\u0e23\u0e49\u0e32\u0e27 \u0e01\u0e23\u0e38\u0e07\u0e40\u0e17\u0e1e\u0e2f',4.6,900,1,'5v5,7v7'],
- [3,'Kick Off Stadium','\u0e23\u0e31\u0e0a\u0e14\u0e32 \u00b7 6.3 \u0e01\u0e21.','\u0e23\u0e31\u0e0a\u0e14\u0e32 \u0e01\u0e23\u0e38\u0e07\u0e40\u0e17\u0e1e\u0e2f',4.7,1000,0,'5v5,7v7,11v11']
+ [1,'Goal Arena Rama 9','พระราม 9 · 2.3 กม.','ถนนพระราม 9 กรุงเทพฯ',4.8,1200,1,'5v5,7v7'],
+ [2,'SoccerPro Ladprao','ลาดพร้าว · 4.1 กม.','ลาดพร้าว กรุงเทพฯ',4.6,900,1,'5v5,7v7'],
+ [3,'Kick Off Stadium','รัชดา · 6.3 กม.','รัชดา กรุงเทพฯ',4.7,1000,0,'5v5,7v7,11v11']
 ]
 const count = db.prepare('SELECT COUNT(*) AS n FROM venues').get().n
 if (!count) {
  const add=db.prepare('INSERT INTO venues (id,name,area,address,rating,price_per_hour,roof,field_types) VALUES (?,?,?,?,?,?,?,?)')
  for(const row of venueSeed) add.run(...row)
 }
-// Repair any existing local database whose Thai venue text was saved with broken encoding.
+// Repair any existing database whose venue text was saved with broken encoding.
 const repair=db.prepare('UPDATE venues SET name=?,area=?,address=?,rating=?,price_per_hour=?,roof=?,field_types=? WHERE id=?')
 for(const [id,name,area,address,rating,price,roof,fields] of venueSeed) repair.run(name,area,address,rating,price,roof,fields,id)
 
@@ -99,4 +99,3 @@ CREATE INDEX IF NOT EXISTS idx_split_bill_members_bill_paid ON split_bill_member
 `) } catch (error) { console.error('index migration failed', error) }
 
 export default db
-
