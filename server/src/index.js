@@ -69,7 +69,7 @@ app.patch('/api/admin/users/:id/role', auth, (req,res) => {
  if(!['player','owner','admin'].includes(role)) return res.status(400).json({error:'เธชเธดเธ—เธ˜เธดเนŒเน"เธกเนˆเธ–เธนเธเธ•เน‰เธญเธ‡'})
  if(user.id===req.user.id && role!=='admin') return res.status(409).json({error:'เน"เธกเนˆเธชเธฒเธกเธฒเธฃเธ–เธฅเธ"เธชเธดเธ—เธ˜เธดเนŒเธšเธฑเธเธŠเธตเนเธญเธ"เธกเธดเธ™เธ—เธตเนˆเธเธณเธฅเธฑเธ‡เนƒเธŠเน‰เธ‡เธฒเธ™เน"เธ"เน‰'})
  if(user.role==='owner' && role!=='owner' && db.prepare('SELECT 1 FROM venues WHERE owner_id=? LIMIT 1').get(user.id)) return res.status(409).json({error:'เน€เธˆเน‰เธฒเธ\\\'เธญเธ‡เธชเธ™เธฒเธกเธ"เธ™เธ™เธตเน‰เธขเธฑเธ‡เธกเธตเธชเธ™เธฒเธกเธ—เธตเนˆเธ"เธนเนเธฅเธญเธขเธนเนˆ เธเธฃเธธเธ"เธฒเน€เธ›เธฅเธตเนˆเธขเธ™เน€เธˆเน‰เธฒเธ\\\'เธญเธ‡เธชเธ™เธฒเธกเธเนˆเธญเธ™เธฅเธ"เธชเธดเธ—เธ˜เธดเนŒ'})
- db.prepare('UPDATE users SET role=? WHERE id=?').run(role,user.id)
+ db.prepare('UPDATE users SET role=?,auth_version=auth_version+1 WHERE id=?').run(role,user.id)
  res.json(db.prepare('SELECT id,name,email,role,points,wins,losses,created_at FROM users WHERE id=?').get(user.id))
 })
 
