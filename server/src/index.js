@@ -12,8 +12,8 @@ const HOST = process.env.HOST || '0.0.0.0'
 const SECRET = process.env.JWT_SECRET || 'porsball-local-dev-secret'
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) throw new Error('JWT_SECRET is required in production')
 
-app.use(cors())
-app.use(express.json())
+app.use(cors({origin:(origin,cb)=>{if(!origin||origin==='https://porsball.onrender.com'||origin==='http://localhost:5173'||origin==='http://127.0.0.1:5173')return cb(null,true);cb(new Error('CORS blocked'))}}))
+app.use(express.json({limit:'100kb'}))
 app.use((req,res,next)=>{
  res.setHeader('Content-Type','application/json; charset=utf-8')
  const json=res.json.bind(res)
@@ -121,8 +121,8 @@ const hashMemberToken = (token) => crypto.createHash('sha256').update(token).dig
 const sendResetEmail = async (email, code) => {
  const key=process.env.RESEND_API_KEY, from=process.env.RESEND_FROM
  if(!key || !from) return false
- const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({from,to:[email],subject:'PorsBall - เธฃเธซเธฑเธชเธขเธทเธ™เธขเธฑเธ™เน€เธ›เธฅเธตเนˆเธขเธ™เธฃเธซเธฑเธชเธœเนˆเธฒเธ™',html:'<p>เธฃเธซเธฑเธชเธขเธทเธ™เธขเธฑเธ™ PorsBall เธ\\\'เธญเธ‡เธ"เธธเธ"เธ"เธทเธญ <strong>'+code+'</strong></p><p>เธฃเธซเธฑเธชเธ™เธตเน‰เนƒเธŠเน‰เน"เธ"เน‰ 10 เธ™เธฒเธ—เธต เนเธฅเธฐเนƒเธŠเน‰เน"เธ"เน‰เธ"เธฃเธฑเน‰เธ‡เน€เธ"เธตเธขเธง</p>'})})
- if(!r.ok) throw new Error('เธชเนˆเธ‡เธญเธตเน€เธกเธฅเน"เธกเนˆเธชเธณเน€เธฃเน‡เธˆ')
+ const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({from,to:[email],subject:'PorsBall - รหัสยืนยันการเปลี่ยนรหัสผ่าน',html:'<p>รหัสยืนยัน PorsBall สำหรับเปลี่ยนรหัสผ่านของคุณคือ <strong>'+code+'</strong></p><p>รหัสนี้ใช้ได้ 10 นาที และใช้ได้เพียงครั้งเดียว</p>'})})
+ if(!r.ok) throw new Error('ส่งอีเมลไม่สำเร็จ')
  return true
 }
 app.post('/api/auth/forgot-password', async (req,res) => {
