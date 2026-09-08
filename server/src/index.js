@@ -127,9 +127,9 @@ const sendResetEmail = async (email, code) => {
 }
 app.post('/api/auth/forgot-password', async (req,res) => {
  const email=(req.body.email||'').trim().toLowerCase()
- if(!email) return res.status(400).json({error:'เธเธฃเธธเธ"เธฒเธเธฃเธญเธเธญเธตเน€เธกเธฅ'})
+ if(!email) return res.status(400).json({error:'กรุณากรอกอีเมล'})
  const user=db.prepare('SELECT id,email FROM users WHERE email=?').get(email)
- const generic={message:'เธ–เน‰เธฒเธญเธตเน€เธกเธฅเธ™เธตเน‰เธกเธตเธšเธฑเธเธŠเธต PorsBall เธฃเธฐเธšเธšเธˆเธฐเธชเนˆเธ‡เธฃเธซเธฑเธชเธขเธทเธ™เธขเธฑเธ™เนƒเธซเน‰'}
+ const generic={message:'หากอีเมลนี้มีบัญชี PorsBall ระบบจะส่งรหัสยืนยันให้คุณ'}
  if(!user) return res.json(generic)
  const recent=db.prepare("SELECT created_at FROM password_resets WHERE user_id=? ORDER BY id DESC LIMIT 1").get(user.id)
  if(recent && Date.now()-Date.parse(recent.created_at+'Z')<60000) return res.json(generic)
@@ -141,12 +141,12 @@ app.post('/api/auth/forgot-password', async (req,res) => {
 })
 app.post('/api/auth/reset-password', async (req,res) => {
  const email=(req.body.email||'').trim().toLowerCase(), code=String(req.body.code||'').trim(), newPassword=req.body.newPassword||''
- if(!email||!/^\d{6}$/.test(code)||newPassword.length<8) return res.status(400).json({error:'เธเธฃเธธเธ"เธฒเธเธฃเธญเธเธญเธตเน€เธกเธฅ เธฃเธซเธฑเธช 6 เธซเธฅเธฑเธ เนเธฅเธฐเธฃเธซเธฑเธชเธœเนˆเธฒเธ™เนƒเธซเธกเนˆเธญเธขเนˆเธฒเธ‡เธ™เน‰เธญเธข 8 เธ•เธฑเธงเธญเธฑเธเธฉเธฃ'})
+if(!email||!/^\d{6}$/.test(code)||newPassword.length<8) return res.status(400).json({error:'กรุณากรอกอีเมล รหัสยืนยัน 6 หลัก และรหัสผ่านใหม่อย่างน้อย 8 ตัวอักษร'})
  const user=db.prepare('SELECT id FROM users WHERE email=?').get(email)
- if(!user) return res.status(400).json({error:'เธฃเธซเธฑเธชเธขเธทเธ™เธขเธฑเธ™เน"เธกเนˆเธ–เธนเธเธ•เน‰เธญเธ‡เธซเธฃเธทเธญเธซเธกเธ"เธญเธฒเธขเธธ'})
+ if(!user) return res.status(400).json({error:'รหัสยืนยันไม่ถูกต้องหรือหมดอายุ'})
  const row=db.prepare('SELECT * FROM password_resets WHERE user_id=? AND used=0 ORDER BY id DESC LIMIT 1').get(user.id)
- if(!row || row.expires_at<Date.now() || row.attempts>=5) return res.status(400).json({error:'เธฃเธซเธฑเธชเธขเธทเธ™เธขเธฑเธ™เน"เธกเนˆเธ–เธนเธเธ•เน‰เธญเธ‡เธซเธฃเธทเธญเธซเธกเธ"เธญเธฒเธขเธธ'})
- if(hashResetCode(code)!==row.code_hash){ db.prepare('UPDATE password_resets SET attempts=attempts+1 WHERE id=?').run(row.id); return res.status(400).json({error:'เธฃเธซเธฑเธชเธขเธทเธ™เธขเธฑเธ™เน"เธกเนˆเธ–เธนเธเธ•เน‰เธญเธ‡เธซเธฃเธทเธญเธซเธกเธ"เธญเธฒเธขเธธ'}) }
+ if(!row || row.expires_at<Date.now() || row.attempts>=5) return res.status(400).json({error:'รหัสยืนยันไม่ถูกต้องหรือหมดอายุ'})
+ if(hashResetCode(code)!==row.code_hash){ db.prepare('UPDATE password_resets SET attempts=attempts+1 WHERE id=?').run(row.id); return res.status(400).json({error:'รหัสยืนยันไม่ถูกต้องหรือหมดอายุ'}) }
  const hash=await bcrypt.hash(newPassword,10)
  db.prepare('UPDATE users SET password_hash=?, auth_version=auth_version+1 WHERE id=?').run(hash,user.id)
  db.prepare('UPDATE password_resets SET used=1 WHERE id=?').run(row.id)
@@ -163,7 +163,7 @@ app.get('/api/me', auth, (req,res) => {
 
 app.get('/api/venues/:id/slots', (req,res) => {
  const date = String(req.query.date || bangkokDate())
- if(!validDate(date)) return res.status(400).json({error:'เธงเธฑเธ™เธ—เธตเนˆเน"เธกเนˆเธ–เธนเธเธ•เน‰เธญเธ‡'})
+ if(!validDate(date)) return res.status(400).json({error:'วันที่ไม่ถูกต้อง'})
  const booked = new Set(db.prepare('SELECT start_time FROM bookings WHERE venue_id=? AND booking_date=? AND status=?').all(req.params.id,date,'confirmed').map(x=>x.start_time))
  const slots = ['16:00','17:00','18:00','19:00','20:00','21:00','22:00'].map(start => ({start,end:`${String(Number(start.slice(0,2))+1).padStart(2,'0')}:00`,available:!booked.has(start)}))
  res.json({date,slots})
