@@ -275,12 +275,18 @@ app.post('/api/matches/:id/join', auth, (req,res) => {
  const state=bookingState(match.match_date,match.start_time,match.end_time)
  if(state!=='UPCOMING') return res.status(409).json({error:state==='EXPIRED'?'เธ™เธฑเธ"เธ™เธตเน‰เน€เธฅเธขเน€เธงเธฅเธฒเธˆเธญเธ‡เนเธฅเน‰เธง':'เธ™เธฑเธ"เธ™เธตเน‰เน€เธฃเธดเนˆเธกเนเธฅเน‰เธง เน"เธกเนˆเธชเธฒเธกเธฒเธฃเธ–เน€เธ\\\'เน‰เธฒเธฃเนˆเธงเธกเน"เธ"เน‰'})
  if(!match.open_for_join) return res.status(409).json({error:'เธ™เธฑเธ"เธ™เธตเน‰เธ›เธดเธ"เธฃเธฑเธšเธ"เธ™เนเธฅเน‰เธง'})
- const count = db.prepare('SELECT COUNT(*) n FROM match_players WHERE match_id=?').get(match.id).n
- if (count >= match.max_players) return res.status(409).json({error:'เธ™เธฑเธ"เธ™เธตเน‰เน€เธ•เน‡เธกเนเธฅเน‰เธง'})
  const existing = db.prepare('SELECT 1 FROM match_players WHERE match_id=? AND user_id=?').get(match.id,req.user.id)
  if (existing) return res.status(409).json({error:'เธ"เธธเธ"เน€เธ\\\'เน‰เธฒเธฃเนˆเธงเธกเธ™เธฑเธ"เธ™เธตเน‰เนเธฅเน‰เธง'})
- try { db.prepare('INSERT INTO match_players(match_id,user_id) VALUES(?,?)').run(match.id,req.user.id); if(req.user.id!==match.creator_id){ const u=db.prepare('SELECT name FROM users WHERE id=?').get(req.user.id); notify(match.creator_id,'join','เธกเธตเธ"เธ™เน€เธ\\\'เน‰เธฒเธฃเนˆเธงเธกเธ™เธฑเธ"',`${u?.name||'เธœเธนเน‰เน€เธฅเนˆเธ™'} เน€เธเนเธฒเธฃเนเธงเธกเธเธฑเธ” ${match.title}`) } }
- catch { return res.status(409).json({error:'เน"เธกเนˆเธชเธฒเธกเธฒเธฃเธ–เน€เธ\\\'เน‰เธฒเธฃเนˆเธงเธกเธ™เธฑเธ"เธ™เธตเน‰เน"เธ"เน‰ เธเธฃเธธเธ"เธฒเธฅเธญเธ‡เนƒเธซเธกเนˆเธญเธตเธเธ"เธฃเธฑเน‰เธ‡'}) }
+ try {
+  const joined=db.transaction(()=>{
+   const count=db.prepare('SELECT COUNT(*) n FROM match_players WHERE match_id=?').get(match.id).n
+   if(count>=match.max_players) return false
+   db.prepare('INSERT INTO match_players(match_id,user_id) VALUES(?,?)').run(match.id,req.user.id)
+   return true
+  })()
+  if(!joined) return res.status(409).json({error:'เธ™เธฑเธ"เธ™เธตเน‰เน€เธ•เน‡เธกเนเธฅเน‰เธง'})
+  if(req.user.id!==match.creator_id){ const u=db.prepare('SELECT name FROM users WHERE id=?').get(req.user.id); notify(match.creator_id,'join','เธกเธตเธ"เธ™เน€เธ\\\'เน‰เธฒเธฃเนˆเธงเธกเธ™เธฑเธ"',`${u?.name||'เธœเธนเน‰เน€เธฅเนˆเธ™'} เน€เธเนเธฒเธฃเนเธงเธกเธเธฑเธ” ${match.title}`) }
+ } catch { return res.status(409).json({error:'เน"เธกเนˆเธชเธฒเธกเธฒเธฃเธ–เน€เธ\\\'เน‰เธฒเธฃเนˆเธงเธกเธ™เธฑเธ"เธ™เธตเน‰เน"เธ"เน‰ เธเธฃเธธเธ"เธฒเธฅเธญเธ‡เนƒเธซเธกเนˆเธญเธตเธเธ"เธฃเธฑเน‰เธ‡'}) }
  res.json({ok:true,message:'เข้าร่วมนัดสำเร็จ'})
 })
 
