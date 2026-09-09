@@ -53,6 +53,9 @@ CREATE TABLE IF NOT EXISTS reviews (
 );
 `)
 try { db.exec('ALTER TABLE users ADD COLUMN auth_version INTEGER NOT NULL DEFAULT 0') } catch {}
+try { db.exec('ALTER TABLE users ADD COLUMN phone TEXT') } catch {}
+try { db.exec('ALTER TABLE users ADD COLUMN address TEXT') } catch {}
+try { db.exec('ALTER TABLE users ADD COLUMN avatar TEXT') } catch {}
 try { db.exec('ALTER TABLE matches ADD COLUMN booking_id INTEGER REFERENCES bookings(id)') } catch {}
 try { db.exec('ALTER TABLE matches ADD COLUMN open_for_join INTEGER NOT NULL DEFAULT 0') } catch {}
 

@@ -13,7 +13,7 @@ const SECRET = process.env.JWT_SECRET || 'porsball-local-dev-secret'
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) throw new Error('JWT_SECRET is required in production')
 
 app.use(cors({origin:(origin,cb)=>{if(!origin||origin==='https://porsball.onrender.com'||origin==='http://localhost:5173'||origin==='http://127.0.0.1:5173')return cb(null,true);cb(new Error('CORS blocked'))}}))
-app.use(express.json({limit:'100kb'}))
+app.use(express.json({limit:'250kb'}))
 app.use((req,res,next)=>{
  res.setHeader('Content-Type','application/json; charset=utf-8')
  const json=res.json.bind(res)
@@ -96,15 +96,17 @@ app.patch('/api/owner/venues/:id', auth, (req,res) => {
  res.json(db.prepare('SELECT * FROM venues WHERE id=?').get(req.params.id))
 })
 app.post('/api/auth/register', async (req,res) => {
- const name=String(req.body.name||'').trim(), email=String(req.body.email||'').trim().toLowerCase(), password=String(req.body.password||'')
- if (!name || !email || !password) return res.status(400).json({error:'เธเธฃเธธเธ"เธฒเธเธฃเธญเธเธ\\\'เน‰เธญเธกเธนเธฅเนƒเธซเน‰เธ"เธฃเธš'})
+ const name=String(req.body.name||'').trim(), email=String(req.body.email||'').trim().toLowerCase(), password=String(req.body.password||''), phone=String(req.body.phone||'').trim(), address=String(req.body.address||'').trim()
+ if (!name || !email || !password || !phone || !address) return res.status(400).json({error:'กรุณากรอกข้อมูลให้ครบ'})
  if (name.length>80) return res.status(400).json({error:'เธŠเธทเนˆเธญเธขเธฒเธงเน€เธเธดเธ™เน"เธ›'})
  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({error:'เธฃเธนเธ›เนเธšเธšเธญเธตเน€เธกเธฅเน"เธกเนˆเธ–เธนเธเธ•เน‰เธญเธ‡'})
  if (password.length<8) return res.status(400).json({error:'เธฃเธซเธฑเธชเธœเนˆเธฒเธ™เธ•เน‰เธญเธ‡เธกเธตเธญเธขเนˆเธฒเธ‡เธ™เน‰เธญเธข 8 เธ•เธฑเธงเธญเธฑเธเธฉเธฃ'})
+ if (phone.length<8 || phone.length>20) return res.status(400).json({error:'กรุณากรอกเบอร์โทรให้ถูกต้อง'})
+ if (address.length>300) return res.status(400).json({error:'ที่อยู่ยาวเกินไป'})
  try {
   const hash = await bcrypt.hash(password,10)
-  const info = db.prepare('INSERT INTO users(name,email,password_hash) VALUES(?,?,?)').run(name,email,hash)
-  const user = db.prepare('SELECT id,name,email,role,points,wins,losses FROM users WHERE id=?').get(info.lastInsertRowid)
+  const info = db.prepare('INSERT INTO users(name,email,password_hash,phone,address) VALUES(?,?,?,?,?)').run(name,email,hash,phone,address)
+  const user = db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar FROM users WHERE id=?').get(info.lastInsertRowid)
   res.status(201).json({token:tokenFor(user),user})
  } catch { res.status(409).json({error:'เธญเธตเน€เธกเธฅเธ™เธตเน‰เธ–เธนเธเนƒเธŠเน‰เธ‡เธฒเธ™เนเธฅเน‰เธง'}) }
 })
@@ -113,7 +115,7 @@ app.post('/api/auth/login', async (req,res) => {
  if(!email || !password) return res.status(400).json({error:'กรุณากรอกอีเมลและรหัสผ่าน'})
  const user = db.prepare('SELECT * FROM users WHERE email=?').get(email)
  if (!user || !(await bcrypt.compare(password,user.password_hash))) return res.status(401).json({error:'อีเมลหรือรหัสผ่านไม่ถูกต้อง'})
- const safe = {id:user.id,name:user.name,email:user.email,role:user.role,points:user.points,wins:user.wins,losses:user.losses,auth_version:user.auth_version}
+ const safe = {id:user.id,name:user.name,email:user.email,role:user.role,points:user.points,wins:user.wins,losses:user.losses,phone:user.phone||null,address:user.address||null,avatar:user.avatar||null,auth_version:user.auth_version}
  res.json({token:tokenFor(safe),user:safe})
 })
 const hashResetCode = (code) => crypto.createHash('sha256').update(code).digest('hex')
@@ -157,8 +159,18 @@ app.post('/api/notifications/:id/read', auth, (req,res) => { db.prepare('UPDATE 
 app.post('/api/notifications/read-all', auth, (req,res) => { db.prepare('UPDATE notifications SET read=1 WHERE user_id=?').run(req.user.id); res.json({ok:true}) })
 
 app.get('/api/me', auth, (req,res) => {
- const user = db.prepare('SELECT id,name,email,role,points,wins,losses,created_at FROM users WHERE id=?').get(req.user.id)
+ const user = db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar,created_at FROM users WHERE id=?').get(req.user.id)
  res.json(user)
+})
+app.patch('/api/me', auth, (req,res) => {
+ const name=String(req.body.name||'').trim(), phone=String(req.body.phone||'').trim(), address=String(req.body.address||'').trim()
+ const avatar=req.body.avatar==null||req.body.avatar===''?null:String(req.body.avatar)
+ if(!name||name.length>80)return res.status(400).json({error:'กรุณากรอกชื่อให้ถูกต้อง'})
+ if(phone.length<8||phone.length>20)return res.status(400).json({error:'กรุณากรอกเบอร์โทรให้ถูกต้อง'})
+ if(!address||address.length>300)return res.status(400).json({error:'กรุณากรอกที่อยู่ให้ถูกต้อง'})
+ if(avatar && (!/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/i.test(avatar)||avatar.length>180000)) return res.status(400).json({error:'รูปโปรไฟล์ไม่ถูกต้องหรือมีขนาดใหญ่เกินไป'})
+ db.prepare('UPDATE users SET name=?,phone=?,address=?,avatar=? WHERE id=?').run(name,phone,address,avatar,req.user.id)
+ res.json(db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar FROM users WHERE id=?').get(req.user.id))
 })
 
 app.get('/api/venues/:id/slots', (req,res) => {
