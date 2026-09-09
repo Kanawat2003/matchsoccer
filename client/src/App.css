@@ -64,3 +64,20 @@ button{transition:background-color .18s,border-color .18s,color .18s,transform .
 
 /* Profile and account identity */
 .header-actions{display:flex;align-items:center;gap:8px}.account-chip{display:flex;align-items:center;gap:8px;border:1px solid var(--line,#ddd);background:var(--card,#fff);border-radius:999px;padding:5px 12px 5px 6px;font-weight:700;cursor:pointer}.mini-avatar{width:32px!important;height:32px!important;font-size:14px!important}.profile-avatar{width:88px!important;height:88px!important;flex:0 0 88px}.avatar{display:flex;align-items:center;justify-content:center;border-radius:50%;overflow:hidden;background:#e9eef5;font-weight:800}.avatar img{width:100%;height:100%;object-fit:cover}.profile-edit{display:grid;gap:12px;margin-top:16px}.profile-edit label{display:grid;gap:6px;font-weight:700}.profile-edit textarea{font:inherit;resize:vertical;min-height:80px}@media(max-width:600px){.account-chip span:last-child{display:none}.header-actions{gap:4px}.profile-head{flex-wrap:wrap}.profile-avatar{width:72px!important;height:72px!important;flex-basis:72px}}
+
+/* Section backgrounds — same dark-green theme, clearer visual separation */
+main{background:var(--pb-bg)}
+main>.hero{background:linear-gradient(180deg,rgba(16,43,28,.82),rgba(9,27,17,.72));border-bottom:1px solid rgba(168,240,74,.07);box-shadow:inset 0 -1px 0 rgba(255,255,255,.025)}
+main>.hero>div:first-child{max-width:760px}
+main>section:not(.hero):not(.match-section){background:linear-gradient(180deg,#0b2115,#091b11);border-bottom:1px solid rgba(255,255,255,.045);padding-top:42px;padding-bottom:52px}
+main>.match-section{background:linear-gradient(180deg,#07150d,#0c2115);border-top:1px solid rgba(168,240,74,.06);border-bottom:1px solid rgba(255,255,255,.045);padding-top:54px;padding-bottom:68px}
+main>section:not(.hero):not(.match-section)>.section-head,main>section:not(.hero):not(.match-section)>.chips,main>section:not(.hero):not(.match-section)>.pitch-grid,main>section:not(.hero):not(.match-section)>.panel,main>.match-section>.section-head,main>.match-section>.match-grid{max-width:1180px;margin-left:auto;margin-right:auto}
+main>section:not(.hero):not(.match-section)>.section-head,main>.match-section>.section-head{padding-left:28px;padding-right:28px}
+main>section:not(.hero):not(.match-section)>.chips{padding-left:28px;padding-right:28px}
+main>section:not(.hero):not(.match-section)>.pitch-grid,main>.match-section>.match-grid{padding-left:28px;padding-right:28px}
+main>section:not(.hero):not(.match-section)>.panel{margin-top:18px;margin-bottom:0}
+.page{background:linear-gradient(180deg,#0b2115 0%,#08180f 100%);border:1px solid rgba(255,255,255,.045);border-radius:22px;padding:42px 28px 110px;box-shadow:0 18px 45px rgba(0,0,0,.16)}
+.page .profile-head{background:linear-gradient(145deg,#10291a,#0c1f13);border:1px solid rgba(168,240,74,.08);border-radius:20px;padding:22px}
+.page .stats{margin-top:18px}
+@media(max-width:800px){main>section:not(.hero):not(.match-section){padding-top:32px;padding-bottom:42px}.page{border-radius:16px;padding:30px 18px 100px}main>section:not(.hero):not(.match-section)>.section-head,main>.match-section>.section-head,main>section:not(.hero):not(.match-section)>.chips,main>section:not(.hero):not(.match-section)>.pitch-grid,main>.match-section>.match-grid{padding-left:18px;padding-right:18px}}
+@media(max-width:600px){main>.hero{background:linear-gradient(180deg,rgba(16,43,28,.9),rgba(9,27,17,.84));padding-bottom:38px}main>section:not(.hero):not(.match-section){padding-top:28px;padding-bottom:34px}main>.match-section{padding-top:38px;padding-bottom:56px}.page{padding:24px 14px 96px}.page .profile-head{padding:16px;border-radius:16px}}
