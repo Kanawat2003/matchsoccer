@@ -1,8 +1,8 @@
 import db from './src/db.js'
 const base='http://127.0.0.1:4001/api'
 const stamp=Date.now()
-const host={name:`E2E Host ${stamp}`,email:`e2e-host-${stamp}@porsball.test`,password:'TestPass123!'}
-const guest={name:`E2E Guest ${stamp}`,email:`e2e-guest-${stamp}@porsball.test`,password:'TestPass123!'}
+const host={name:`E2E Host ${stamp}`,email:`e2e-host-${stamp}@porsball.test`,password:'TestPass123!',phone:'0812345678',address:'E2E Test Address'}
+const guest={name:`E2E Guest ${stamp}`,email:`e2e-guest-${stamp}@porsball.test`,password:'TestPass123!',phone:'0812345678',address:'E2E Test Address'}
 let H,G
 async function req(path,opt={}){const r=await fetch(base+path,{...opt,headers:{'Content-Type':'application/json',...(opt.token?{Authorization:`Bearer ${opt.token}`}:{})}});const t=await r.text();let d;try{d=JSON.parse(t)}catch{throw Error(`${path} non-json ${r.status}`)};return{s:r.status,d}}
 async function call(label,path,opt={}){const x=await req(path,opt);if(x.s<200||x.s>=300)throw Error(`${label} failed ${x.s} ${JSON.stringify(x.d)}`);console.log('PASS',label,x.s);return x.d}

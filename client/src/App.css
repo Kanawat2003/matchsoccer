@@ -81,3 +81,94 @@ main>section:not(.hero):not(.match-section)>.panel{margin-top:18px;margin-bottom
 .page .stats{margin-top:18px}
 @media(max-width:800px){main>section:not(.hero):not(.match-section){padding-top:32px;padding-bottom:42px}.page{border-radius:16px;padding:30px 18px 100px}main>section:not(.hero):not(.match-section)>.section-head,main>.match-section>.section-head,main>section:not(.hero):not(.match-section)>.chips,main>section:not(.hero):not(.match-section)>.pitch-grid,main>.match-section>.match-grid{padding-left:18px;padding-right:18px}}
 @media(max-width:600px){main>.hero{background:linear-gradient(180deg,rgba(16,43,28,.9),rgba(9,27,17,.84));padding-bottom:38px}main>section:not(.hero):not(.match-section){padding-top:28px;padding-bottom:34px}main>.match-section{padding-top:38px;padding-bottom:56px}.page{padding:24px 14px 96px}.page .profile-head{padding:16px;border-radius:16px}}
+
+
+/* PorsBall bright contrast theme — clearer sections and stronger hierarchy */
+:root{--pb-lime:#78c82a;--pb-lime-2:#b8ee67;--pb-bg:#eef6ed;--pb-surface:#ffffff;--pb-surface-2:#f4faf2;--pb-muted:#607064;--pb-border:#d8e6d6;--pb-text:#17301f;--pb-green:#176b36;--pb-green-2:#0f5229}
+body{background:var(--pb-bg);color:var(--pb-text)}
+.app{background:radial-gradient(900px 500px at 85% -10%,rgba(120,200,42,.18),transparent 62%),linear-gradient(180deg,#f5faf3 0%,#edf6eb 52%,#e8f2e7 100%);color:var(--pb-text)}
+header{background:rgba(255,255,255,.94);border-bottom:1px solid #d4e3d2;box-shadow:0 4px 20px rgba(38,76,45,.10);color:var(--pb-text)}
+.brand b{color:#17301f}.brand span{color:#4f9f20}.location{color:#607064}
+.login,.primary{background:linear-gradient(135deg,#8bd83b,#68b824);color:#102510;box-shadow:0 6px 16px rgba(90,150,40,.18)}
+.hero{background:linear-gradient(135deg,#e8f7e4 0%,#dff2dc 55%,#edf8ea 100%);border-bottom:1px solid #cfe2cc}
+.hero:before{background:rgba(120,200,42,.14)}
+.eyebrow{color:#4d991f}.hero h1{color:#16331f}.sub{color:#5c6d61}
+.search{background:#fff;border:1px solid #d3e2d1;box-shadow:0 14px 35px rgba(45,80,50,.13)}
+.search input{background:#fff;color:#17301f}.search button{background:#176b36;color:#fff}.search button:hover{background:#208345}
+main{background:#eef6ed}
+main>section:not(.hero):not(.match-section){background:linear-gradient(180deg,#f3f9f1,#eaf4e8);border-bottom:1px solid #d4e5d2}
+main>.match-section{background:linear-gradient(180deg,#e5f1e3,#f1f8ef);border-top:1px solid #d0e2ce;border-bottom:1px solid #d4e5d2}
+.section-head h1,.section-head h2,.page h1{color:#17301f}.section-head p,.page>p:not(.eyebrow){color:#607064}
+.link{color:#4f9f20}.chips button{background:#fff;border-color:#d4e3d2;color:#53645a;box-shadow:0 2px 7px rgba(50,90,55,.05)}
+.chips button:hover{border-color:#83c85a;color:#275d32}.chips .active{background:#8bd83b;color:#183014;border-color:#78c82a;box-shadow:0 5px 14px rgba(120,200,42,.18)}
+.pitch-card,.match-card,.panel,.owner-grid>div{background:#fff;border-color:#d6e4d4;color:#17301f;box-shadow:0 10px 25px rgba(44,78,49,.10)}
+.pitch-card:hover{border-color:#9bd873;box-shadow:0 16px 34px rgba(44,78,49,.15)}
+.pitch-photo{background:radial-gradient(circle at 50% 35%,#b7d96d,#58a34e 52%,#28703c);}
+.pitch-body h3{color:#17301f}.pitch-body p,.match-card p{color:#66766b}.rating{color:#4f921f}.card-foot b{color:#17301f}.card-foot em{color:#718078}
+.card-foot button,.match-card>div:last-child button{background:#e4f5df;border:1px solid #b9dcae;color:#246331}.card-foot button:hover,.match-card>div:last-child button:hover{background:#d4efcb;color:#174f27}
+.match-card{background:linear-gradient(145deg,#fff,#f5faf3)}.match-icon{background:linear-gradient(145deg,#dff2d8,#cce8c6);border-color:#b9dcae;color:#286638}.avatars{color:#718078}.avatars span{color:#4f9f20}
+.page{background:linear-gradient(180deg,#f4f9f2,#eaf4e8);border-color:#d4e4d2;box-shadow:0 14px 35px rgba(44,78,49,.10)}
+.page .profile-head{background:#fff;border-color:#d5e4d3}.avatar{background:#9bdd58;color:#17301f}.badge{color:#4f9f20}.stats div,.owner-grid>div{background:#fff;border-color:#d6e4d4}.stats span,.owner-grid span,.owner-grid small{color:#68786d}.stats b,.owner-grid b{color:#17301f}.owner-grid i{color:#4f9f20}
+.panel{background:linear-gradient(145deg,#fff,#f6faf4)}.progress{background:#dce8da}.progress span{background:linear-gradient(90deg,#73c92d,#a1e45c)}
+.bottom{background:rgba(255,255,255,.96);border-top:1px solid #d3e2d1;box-shadow:0 -6px 22px rgba(44,78,49,.10)}.navitem{color:#718078}.navitem.active{color:#4f9f20}.navitem:hover{color:#275d32}
+.booking{background:#fff;color:#17301f;border:1px solid #d3e2d1;box-shadow:0 25px 70px rgba(29,55,34,.28)}.booking-content h3{color:#304337}.booking-content p{color:#68786d}.booking-content input[type=date],.date-row>*{border-color:#d3e2d1;background:#fff;color:#17301f}.date-row b{border-color:#65a958;background:#e8f6e4}.slots button{border-color:#d3e2d1;background:#fff;color:#17301f}.slots button:hover:not(:disabled){border-color:#65a958;background:#f0f9ed}.slots .selected{border-color:#4f9f20;background:#e8f6e4}.slots button small{color:#718078}.confirm{background:linear-gradient(135deg,#218c45,#176b36);color:#fff}
+.modal{background:rgba(18,39,23,.55)}
+.auth-overlay{background:rgba(18,39,23,.55)}.auth-box{background:#fff;color:#17301f;border-color:#d3e2d1;box-shadow:0 25px 70px rgba(29,55,34,.28)}.auth-logo b{color:#17301f}.auth-logo span{color:#4f9f20}.auth-box p{color:#68786d}.auth-box input,.auth-box select{border-color:#d2e0d0;background:#fff;color:#17301f}.auth-box input:focus{border-color:#65a958;box-shadow:0 0 0 3px rgba(101,169,88,.12)}.auth-submit{background:linear-gradient(135deg,#218c45,#176b36);color:#fff}.auth-toggle{color:#3f8c22}.auth-x{background:#17301f}
+.split-preview,.match-cost{background:#e9f6e5;border-color:#c7dfc3;color:#285b31}.split-member{border-color:#d3e2d1;background:#fff}.split-member button{background:#218c45}.split-member button:disabled{background:#d7e2d5;color:#55705b}
+.notification-panel{background:#fff;border-color:#d2e3d0;color:#17301f;box-shadow:0 20px 45px rgba(29,55,34,.22)}.notification-head{border-bottom-color:#dce8da}.notification-head button{color:#4f9f20}.notification{background:#f5faf3;color:#17301f;border-bottom-color:#dce8da}.notification:hover{background:#e9f5e6}.notification.read{background:#fff;color:#6d7c72}.notification span{color:#607064}.notification small{color:#829087}.notification-empty{color:#718078}
+.danger{background:#fff1f1;border-color:#e2a9a9;color:#b23a3a}.danger:hover{background:#ffe4e4}.owner-field-badge,.owner-status{background:#edf4eb;border-color:#d3e2d1;color:#4e6255}.owner-venue-status{background:#f2f8f0;border-color:#d3e2d1}.owner-venue-status small{color:#718078}.owner-venue-status .is-active{color:#a66b12}.owner-venue-status .is-free{color:#278448}
+.owner-dashboard .owner-card,.owner-booking-card,.owner-booking-summary>div,.admin-page .admin-stats>div{background:#fff;border-color:#d6e4d4;box-shadow:0 10px 25px rgba(44,78,49,.10)}.owner-dashboard .owner-card:hover,.owner-booking-card:hover{border-color:#a5d98a;box-shadow:0 16px 34px rgba(44,78,49,.14)}.owner-dashboard .owner-meta,.owner-booking-card p,.owner-booking-user span{color:#68786d}.owner-dashboard .owner-meta b{color:#17301f}.owner-dashboard .owner-empty{color:#68786d}.owner-dashboard .owner-success{color:#278448}.owner-dashboard .owner-error,.owner-error{color:#b23a3a}
+.owner-booking-summary span,.admin-stats span{color:#68786d}.owner-booking-filters button,.admin-booking-filters button,.admin-role-filters button{background:#fff;border-color:#d3e2d1;color:#607064}.owner-booking-filters button.active,.admin-booking-filters button.active,.admin-role-filters button.active{background:#e5f4e1;border-color:#9bd48b;color:#28713b}
+.admin-row{border-bottom-color:#dce8da}.admin-row span,.admin-row small{color:#68786d}.admin-row select{border-color:#d3e2d1;color:#17301f;background:#fff}.admin-status{background:#edf4eb;border-color:#d3e2d1;color:#53665a}.admin-status.status-upcoming,.admin-status.status-confirmed,.status-confirmed,.status-upcoming{color:#278448;background:#e5f4e1}.admin-status.status-in_progress,.status-in_progress{color:#9a6714;background:#fff3dc}.admin-status.status-cancelled,.admin-status.status-expired,.status-cancelled,.status-expired{color:#b23a3a;background:#ffebeb}.admin-status.status-completed,.status-completed{color:#326aa0;background:#e8f1fb}
+.notification-panel,.booking,.auth-box{backdrop-filter:blur(14px)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline-color:#4f9f20}
+@media(max-width:600px){main>.hero{background:linear-gradient(180deg,#e8f7e4,#edf8ea)}.page{background:linear-gradient(180deg,#f4f9f2,#eaf4e8)}.bottom{height:74px}}
+
+/* PorsBall bright football theme v3 — warm stadium green, not white */
+:root{--pb-bg:#0f2118;--pb-bg-2:#173325;--pb-surface:#1c3a2a;--pb-surface-2:#234634;--pb-accent:#b7f34a;--pb-accent-2:#d4ff78;--pb-text:#f4f8f1;--pb-muted:#b4c4b9;--pb-border:rgba(255,255,255,.12)}
+body{background:#0f2118;color:var(--pb-text)}
+.app{background:radial-gradient(900px 520px at 80% -10%,rgba(105,174,76,.32),transparent 62%),radial-gradient(650px 500px at -10% 45%,rgba(48,116,72,.24),transparent 68%),linear-gradient(180deg,#12281d 0%,#0e2017 55%,#10251a 100%)}
+header{background:rgba(18,40,29,.94);border-bottom:1px solid rgba(183,243,74,.18);box-shadow:0 8px 28px rgba(0,0,0,.20)}
+.brand b{color:#f7faf5}.brand span{color:var(--pb-accent)}.location{color:#bdcabe}.login,.primary{background:linear-gradient(135deg,#c5f85b,#9cdb38);color:#132413;box-shadow:0 7px 20px rgba(183,243,74,.16)}
+.hero{background:linear-gradient(135deg,rgba(42,87,57,.88),rgba(23,55,39,.78));border-bottom:1px solid rgba(183,243,74,.13);box-shadow:inset 0 -1px 0 rgba(255,255,255,.04)}
+.hero:before{background:rgba(183,243,74,.10)}.eyebrow{color:var(--pb-accent-2)}.sub{color:#c2d0c6}.hero-ball{opacity:.9}
+.search{background:#f2f5ef;border:1px solid rgba(255,255,255,.18);box-shadow:0 18px 45px rgba(0,0,0,.25)}.search input{background:transparent;color:#203128}.search button{background:#24643a;color:#f4fff3}.search button:hover{background:#2e7b47}
+main{background:transparent}main>section:not(.hero):not(.match-section){background:linear-gradient(180deg,#183629,#152f24);border-bottom:1px solid rgba(255,255,255,.07)}
+main>.match-section{background:linear-gradient(180deg,#10271b,#1a3929);border-top:1px solid rgba(183,243,74,.10);border-bottom:1px solid rgba(255,255,255,.07)}
+.section-head p,.page>p:not(.eyebrow){color:#aebfb4}.link{color:var(--pb-accent-2)}
+.chips button{background:#244735;border-color:rgba(255,255,255,.13);color:#c5d2c8}.chips button:hover{background:#2d5540;color:#eff8ee}.chips .active{background:var(--pb-accent);color:#183018;border-color:var(--pb-accent);box-shadow:0 6px 18px rgba(183,243,74,.15)}
+.pitch-card,.match-card,.panel,.owner-grid>div{background:linear-gradient(145deg,#214634,#193829);border-color:rgba(255,255,255,.12);box-shadow:0 12px 30px rgba(0,0,0,.20)}
+.pitch-card:hover{border-color:rgba(183,243,74,.42);box-shadow:0 20px 42px rgba(0,0,0,.28)}
+.pitch-photo{background:radial-gradient(circle at 50% 28%,#a9cc65,#477d4c 45%,#28553b);}.pitch-photo:after{border-color:rgba(255,255,255,.22)}
+.pitch-body h3{color:#f4f8f1}.pitch-body p{color:#a9bdb0}.rating{color:#d0f17e}.card-foot b{color:#eff8ee}.card-foot em{color:#9cafA3}.card-foot button{background:#2d6840;color:#d9f6ad;border-color:rgba(183,243,74,.20)}.card-foot button:hover{background:#3b8050}
+.match-card{background:linear-gradient(145deg,#203f30,#183426)}.match-card p,.avatars{color:#a7b9ae}.match-card>b{color:#c9f275}.match-icon{background:linear-gradient(145deg,#376f45,#245437);border-color:rgba(183,243,74,.18)}
+.bottom{background:rgba(18,40,29,.96);border-top-color:rgba(255,255,255,.10)}.navitem{color:#91a59a}.navitem.active{color:var(--pb-accent)}
+.page{background:linear-gradient(180deg,#183629,#12291e);border-color:rgba(255,255,255,.09)}.profile-head{background:#214533;border-color:rgba(255,255,255,.11)}.page .profile-head{background:linear-gradient(145deg,#244a36,#1b392b);border-color:rgba(183,243,74,.12)}
+.stats div,.owner-grid>div{background:linear-gradient(145deg,#214634,#193729);border-color:rgba(255,255,255,.11)}.stats span,.owner-grid span,.owner-grid small{color:#a5b8ac}.owner-grid b,.stats b{color:#f1f7ef}
+.panel{background:linear-gradient(145deg,#214634,#183628)}.progress{background:#315040}.progress span{background:linear-gradient(90deg,#9edc3b,#c9f866)}
+.booking,.auth-box{background:#eef3ec;color:#203128}.booking-photo{background:linear-gradient(135deg,#4c8650,#9abd57)}.booking-content p{color:#607568}.confirm,.auth-submit{background:linear-gradient(135deg,#2f8a4b,#236d3a)}
+.notification-panel{background:#1b392a;border-color:rgba(183,243,74,.16)}.notification{background:#224633;color:#eff7ef}.notification.read{background:transparent;color:#b4c4b9}.notification:hover{background:#2a523c}
+.danger{background:#4b2929;color:#ffc1bd;border-color:#8b4a4a}.owner-status,.admin-status{background:rgba(255,255,255,.08)}
+.owner-dashboard .owner-card,.owner-booking-card,.owner-booking-summary>div,.admin-page .admin-stats>div{background:linear-gradient(145deg,#214634,#193729);border-color:rgba(255,255,255,.11)}
+.owner-field-badge{background:rgba(255,255,255,.09);color:#d3ded6}.owner-venue-status{background:rgba(0,0,0,.10);border-color:rgba(255,255,255,.10)}
+.admin-role-filters button,.admin-booking-filters button,.owner-booking-filters button{background:#244735;color:#bfcfc4;border-color:rgba(255,255,255,.12)}.admin-role-filters button.active,.admin-booking-filters button.active,.owner-booking-filters button.active{background:rgba(183,243,74,.18);border-color:rgba(183,243,74,.42);color:#d8fa92}
+@media(max-width:800px){main>section:not(.hero):not(.match-section){background:linear-gradient(180deg,#183629,#142d22)}main>.match-section{background:linear-gradient(180deg,#10271b,#193829)}}
+/* PorsBall readability pass — stronger typography */
+body{font-weight:500;letter-spacing:.01em;-webkit-font-smoothing:antialiased}
+.app{color:#f7fbf6}
+.brand b,.hero h1,.section-head h2,.page h1,.profile-head h2,.pitch-body h3{color:#ffffff;text-shadow:0 1px 2px rgba(0,0,0,.22)}
+.hero h1{font-weight:800;letter-spacing:-.02em}
+.eyebrow,.link,.rating,.card-foot b,.match-card>b{font-weight:700}
+.sub,.section-head p,.page>p:not(.eyebrow),.pitch-body p,.match-card p,.avatars,.location{color:#d2ddd5}
+.pitch-body p,.match-card p{font-weight:500}
+.chips button{font-weight:650;color:#e5eee7}.chips .active{font-weight:800;color:#162615}
+.card-foot em{color:#c2cec5;font-style:normal;font-weight:600}
+.card-foot button{font-weight:750;color:#e8f8d0}
+.navitem{color:#c0cec5;font-weight:650}.navitem.active{color:#c8f75c;font-weight:800}
+.stats span,.owner-grid span,.owner-grid small{color:#c3d0c8;font-weight:550}.stats b,.owner-grid b{color:#fff;font-weight:800}
+.notification{color:#f4f9f5}.notification.read{color:#c2cec5}
+.admin-role-filters button,.admin-booking-filters button,.owner-booking-filters button{color:#d7e2da;font-weight:650}
+.admin-role-filters button.active,.admin-booking-filters button.active,.owner-booking-filters button.active{color:#e5ffad;font-weight:800}
+.booking-content p{color:#53665a;font-weight:500}
+.search input{font-weight:550;color:#263a2d}.search input::placeholder{color:#64766a;opacity:1}
+.search button,.confirm,.auth-submit,.primary,.login{font-weight:800}

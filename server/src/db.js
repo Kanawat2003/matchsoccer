@@ -102,3 +102,12 @@ CREATE INDEX IF NOT EXISTS idx_split_bill_members_bill_paid ON split_bill_member
 `) } catch (error) { console.error('index migration failed', error) }
 
 export default db
+
+try { db.exec("ALTER TABLE venues ADD COLUMN review_status TEXT NOT NULL DEFAULT 'approved'") } catch {}
+try { db.exec("ALTER TABLE venues ADD COLUMN review_note TEXT NOT NULL DEFAULT ''") } catch {}
+try { db.exec("ALTER TABLE venues ADD COLUMN submitted_at TEXT") } catch {}
+try { db.exec("ALTER TABLE venues ADD COLUMN reviewed_at TEXT") } catch {}
+try { db.exec("ALTER TABLE venues ADD COLUMN reviewed_by INTEGER REFERENCES users(id)") } catch {}
+try { db.exec("CREATE TABLE IF NOT EXISTS venue_reviews (id INTEGER PRIMARY KEY AUTOINCREMENT,venue_id INTEGER NOT NULL REFERENCES venues(id) ON DELETE CASCADE,actor_user_id INTEGER NOT NULL REFERENCES users(id),action TEXT NOT NULL,note TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)") } catch {}
+try { db.exec("CREATE INDEX IF NOT EXISTS idx_venues_review_status ON venues(review_status,submitted_at)") } catch {}
+try { db.exec("CREATE INDEX IF NOT EXISTS idx_venue_reviews_venue ON venue_reviews(venue_id,created_at)") } catch {}

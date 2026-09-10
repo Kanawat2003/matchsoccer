@@ -38,3 +38,6 @@
 .owner-dashboard .owner-card h3{letter-spacing:-.025em}.owner-dashboard .owner-meta{line-height:1.8}.owner-field-badge{border:1px solid rgba(255,255,255,.08)}
 .owner-venue-status{background:rgba(255,255,255,.025);border-color:rgba(255,255,255,.08)}
 .owner-dashboard .confirm{min-height:44px}
+
+.owner-head-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.owner-review-box{margin:16px 0;border:1px solid rgba(92,120,82,.2)}
+.owner-review-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:14px 0;border-top:1px solid rgba(92,120,82,.16);align-items:center}.owner-review-row:first-of-type{border-top:0}.owner-review-row small{display:block;margin-top:3px;color:#53665a}.owner-review-row p{grid-column:1/-1;margin:0;color:#7a4b21;font-weight:650}.review-pill{border-radius:999px;padding:5px 10px;font-weight:800;font-size:12px}.review-pending_review{background:#fff0c2;color:#795b00}.review-changes_requested{background:#ffe2b8;color:#814b00}.review-rejected{background:#ffd8d8;color:#8a2525}.review-approved{background:#dff2c7;color:#315d1f}

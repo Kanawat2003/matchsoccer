@@ -39,3 +39,10 @@ export const api={
 
 
 
+
+// Venue onboarding/review API
+export type VenueRequest=Venue & {review_status:string;review_note:string;submitted_at?:string|null;reviewed_at?:string|null;reviewed_by?:number|null;owner_name?:string;owner_email?:string}
+export type VenueReview={id:number;venue_id:number;actor_user_id:number;actor_name:string;action:string;note:string;created_at:string}
+
+
+export const venueWorkflowApi={ownerVenueRequests:()=>request<VenueRequest[]>('/owner/venue-requests'),createOwnerVenue:(data:Record<string,unknown>)=>request<VenueRequest>('/owner/venues',{method:'POST',body:JSON.stringify(data)}),submitOwnerVenue:(id:number)=>request<VenueRequest>(`/owner/venues/${id}/submit`,{method:'PATCH'}),adminVenueRequests:()=>request<VenueRequest[]>('/admin/venue-requests'),adminVenueReview:(id:number,action:string,note:string)=>request<VenueRequest>(`/admin/venues/${id}/review`,{method:'PATCH',body:JSON.stringify({action,note})}),adminVenueHistory:(id:number)=>request<VenueReview[]>(`/admin/venues/${id}/review-history`)}
