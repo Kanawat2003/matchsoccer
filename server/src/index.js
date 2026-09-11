@@ -13,7 +13,7 @@ const SECRET = process.env.JWT_SECRET || 'porsball-local-dev-secret'
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) throw new Error('JWT_SECRET is required in production')
 
 app.use(cors({origin:(origin,cb)=>{if(!origin||origin==='https://porsball.onrender.com'||origin==='http://localhost:5173'||origin==='http://127.0.0.1:5173')return cb(null,true);cb(new Error('CORS blocked'))}}))
-app.use(express.json({limit:'250kb'}))
+app.use(express.json({limit:'1mb'}))
 app.use((req,res,next)=>{
  res.setHeader('Content-Type','application/json; charset=utf-8')
  const json=res.json.bind(res)
@@ -46,14 +46,55 @@ const validDate = (date) => /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(ne
 const bookingState = (date,start,end) => { const now=new Date(); const from=new Date(`${date}T${start}:00+07:00`); const to=new Date(`${date}T${end}:00+07:00`); return now>=to?'EXPIRED':now>=from?'IN_PROGRESS':'UPCOMING' }
 
 app.get('/api/health', (_,res) => res.json({ok:true, service:'PorsBall API'}))
+const publicVenueSelect=`SELECT v.*,COALESCE(f.name,v.name) facility_name,COALESCE(f.address,v.address) facility_address,f.phone facility_phone,f.description facility_description,f.image facility_image,
+ CASE WHEN v.facility_id IS NULL THEN 1 ELSE (SELECT COUNT(*) FROM venues vf WHERE vf.facility_id=v.facility_id AND vf.review_status='approved' AND vf.service_status='active') END facility_field_count
+ FROM venues v LEFT JOIN facilities f ON f.id=v.facility_id`
 app.get('/api/venues', (req,res) => {
  const q = `%${req.query.q || ''}%`
- const rows = db.prepare("SELECT * FROM venues WHERE review_status='approved' AND (name LIKE ? OR area LIKE ?) ORDER BY rating DESC").all(q,q)
+ const rows = db.prepare(`${publicVenueSelect} WHERE v.review_status='approved' AND v.service_status='active' AND (v.name LIKE ? OR v.area LIKE ? OR f.name LIKE ? OR f.address LIKE ?) ORDER BY f.name,v.id`).all(q,q,q,q)
  res.json(rows)
 })
+app.get('/api/facilities/:id', (req,res) => {
+ const facility=db.prepare('SELECT * FROM facilities WHERE id=?').get(req.params.id)
+ if(!facility) return res.status(404).json({error:'ไม่พบสถานที่'})
+ const fields=db.prepare(`${publicVenueSelect} WHERE v.facility_id=? AND v.review_status='approved' AND v.service_status='active' ORDER BY v.id`).all(req.params.id)
+ res.json({...facility,fields})
+})
+app.get('/api/owner/facilities', auth, (req,res) => {
+ if(req.user.role!=='owner'&&req.user.role!=='admin') return res.status(403).json({error:'ไม่มีสิทธิ์จัดการสถานที่'})
+ const facilities=db.prepare('SELECT * FROM facilities WHERE owner_id=? ORDER BY id DESC').all(req.user.id)
+ res.json(facilities.map(f=>({...f,fields:db.prepare('SELECT * FROM venues WHERE facility_id=? ORDER BY id').all(f.id)})))
+})
+const imageValue=(value)=>{if(value==null||value==='')return null;const x=String(value);return /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/i.test(x)&&x.length<=180000?x:null}
+app.post('/api/owner/facilities', auth, (req,res) => {
+ if(req.user.role!=='owner') return res.status(403).json({error:'เฉพาะเจ้าของสถานที่เท่านั้น'})
+ const name=String(req.body.name||'').trim(),address=String(req.body.address||'').trim(),phone=String(req.body.phone||'').trim(),description=String(req.body.description||'').trim(),image=imageValue(req.body.image)
+ if(!name||!address||name.length>120||address.length>300||phone.length>30||description.length>500) return res.status(400).json({error:'กรุณากรอกข้อมูลสถานที่ให้ถูกต้อง'})
+ if(req.body.image&&!image) return res.status(400).json({error:'รูปสถานที่ไม่ถูกต้องหรือมีขนาดใหญ่เกินไป'})
+ const r=db.prepare('INSERT INTO facilities(owner_id,name,address,phone,description,image) VALUES(?,?,?,?,?,?)').run(req.user.id,name,address,phone,description,image)
+ res.status(201).json(db.prepare('SELECT * FROM facilities WHERE id=?').get(r.lastInsertRowid))
+})
+app.patch('/api/owner/facilities/:id', auth, (req,res) => {
+ const f=db.prepare('SELECT * FROM facilities WHERE id=? AND owner_id=?').get(req.params.id,req.user.id)
+ if(!f) return res.status(404).json({error:'ไม่พบสถานที่ของคุณ'})
+ const name=String(req.body.name??f.name).trim(),address=String(req.body.address??f.address).trim(),phone=String(req.body.phone??f.phone).trim(),description=String(req.body.description??f.description).trim(),image=req.body.image===undefined?f.image:imageValue(req.body.image)
+ if(!name||!address||name.length>120||address.length>300||phone.length>30||description.length>500) return res.status(400).json({error:'กรุณากรอกข้อมูลสถานที่ให้ถูกต้อง'})
+ if(req.body.image!==undefined&&req.body.image!==null&&!image) return res.status(400).json({error:'รูปสถานที่ไม่ถูกต้องหรือมีขนาดใหญ่เกินไป'})
+ db.prepare('UPDATE facilities SET name=?,address=?,phone=?,description=?,image=?,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(name,address,phone,description,image,f.id)
+ res.json(db.prepare('SELECT * FROM facilities WHERE id=?').get(f.id))
+})
+app.post('/api/owner/facilities/:id/fields', auth, (req,res) => {
+ const f=db.prepare('SELECT * FROM facilities WHERE id=? AND owner_id=?').get(req.params.id,req.user.id)
+ if(!f) return res.status(404).json({error:'ไม่พบสถานที่ของคุณ'})
+ const name=String(req.body.name||'').trim(),area=String(req.body.area||f.name).trim(),address=String(req.body.address||f.address).trim(),price=Number(req.body.price_per_hour),fieldTypes=String(req.body.field_types||'5v5').trim(),roof=req.body.roof?1:0,image=imageValue(req.body.image)
+ if(!name||!area||!address||!fieldTypes||!Number.isFinite(price)||price<=0) return res.status(400).json({error:'กรุณากรอกข้อมูลสนามให้ครบ'})
+ if(req.body.image&&!image) return res.status(400).json({error:'รูปสนามไม่ถูกต้องหรือมีขนาดใหญ่เกินไป'})
+ const r=db.prepare("INSERT INTO venues(name,area,address,rating,price_per_hour,roof,field_types,owner_id,facility_id,image,service_status,review_status,submitted_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,'pending_review',CURRENT_TIMESTAMP)").run(name,area,address,0,price,roof,fieldTypes,req.user.id,f.id,image,'active')
+ res.status(201).json(db.prepare(`${publicVenueSelect} WHERE v.id=?`).get(r.lastInsertRowId))
+})
 app.get('/api/venues/:id', (req,res) => {
- const venue = db.prepare("SELECT * FROM venues WHERE id=? AND review_status='approved'").get(req.params.id)
- if (!venue) return res.status(404).json({error:'เนเธกเนเธเธเธชเธเธฒเธก'})
+ const venue = db.prepare(`${publicVenueSelect} WHERE v.id=? AND v.review_status='approved' AND v.service_status='active'`).get(req.params.id)
+ if (!venue) return res.status(404).json({error:'ไม่พบสนาม'})
  res.json(venue)
 })
 app.get('/api/admin/users', auth, (req,res) => {
@@ -76,8 +117,8 @@ app.patch('/api/admin/users/:id/role', auth, (req,res) => {
 app.get('/api/owner/venues', auth, (req,res) => {
  if (req.user.role !== 'owner' && req.user.role !== 'admin') return res.status(403).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
  const rows = req.user.role === 'admin'
-  ? db.prepare('SELECT * FROM venues ORDER BY id DESC').all()
-  : db.prepare("SELECT * FROM venues WHERE owner_id=? ORDER BY id DESC").all(req.user.id)
+  ? db.prepare(`${publicVenueSelect} ORDER BY v.id DESC`).all()
+  : db.prepare(`${publicVenueSelect} WHERE v.owner_id=? ORDER BY v.id DESC`).all(req.user.id)
  res.json(rows)
 })
 app.patch('/api/owner/venues/:id', auth, (req,res) => {
@@ -85,16 +126,20 @@ app.patch('/api/owner/venues/:id', auth, (req,res) => {
  const venue = db.prepare('SELECT * FROM venues WHERE id=?').get(req.params.id)
  if (!venue) return res.status(404).json({error:'เนเธกเนเธเธเธชเธเธฒเธก'})
  if (req.user.role !== 'admin' && venue.owner_id !== req.user.id) return res.status(403).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
- const {name,area,address,pricePerHour,price_per_hour,roof,fieldTypes,field_types} = req.body
+ const {name,area,address,pricePerHour,price_per_hour,roof,fieldTypes,field_types,image,serviceStatus} = req.body
  const finalPrice = Number(pricePerHour ?? price_per_hour)
  const finalFields = String(fieldTypes ?? field_types ?? '').trim()
  const finalName = String(name ?? '').trim()
  const finalArea = String(area ?? '').trim()
  const finalAddress = String(address ?? '').trim()
- if (!finalName || !finalArea || !finalAddress || !finalFields || !Number.isFinite(finalPrice) || finalPrice <= 0) return res.status(400).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
+ const finalImage=image===undefined?venue.image:imageValue(image)
+ const finalServiceStatus=String(serviceStatus ?? venue.service_status ?? 'active')
+ if (!finalName || !finalArea || !finalAddress || !finalFields || !Number.isFinite(finalPrice) || finalPrice <= 0) return res.status(400).json({error:'กรุณากรอกข้อมูลสนามให้ครบ'})
+ if(!['active','maintenance','inactive'].includes(finalServiceStatus)) return res.status(400).json({error:'สถานะสนามไม่ถูกต้อง'})
+ if(image!==undefined&&image!==null&&!finalImage) return res.status(400).json({error:'รูปสนามไม่ถูกต้องหรือมีขนาดใหญ่เกินไป'})
  const needsReview=req.user.role==='owner' && ['changes_requested','rejected','draft'].includes(String(venue.review_status));
  const nextStatus=needsReview?'pending_review':venue.review_status;
- db.prepare('UPDATE venues SET name=?,area=?,address=?,price_per_hour=?,roof=?,field_types=?,review_status=?,review_note=?,submitted_at=CASE WHEN ?=\'pending_review\' THEN CURRENT_TIMESTAMP ELSE submitted_at END WHERE id=?').run(finalName,finalArea,finalAddress,finalPrice,roof?1:0,finalFields,nextStatus,needsReview?'':venue.review_note,nextStatus,req.params.id);
+ db.prepare('UPDATE venues SET name=?,area=?,address=?,price_per_hour=?,roof=?,field_types=?,image=?,service_status=?,review_status=?,review_note=?,submitted_at=CASE WHEN ?=\'pending_review\' THEN CURRENT_TIMESTAMP ELSE submitted_at END WHERE id=?').run(finalName,finalArea,finalAddress,finalPrice,roof?1:0,finalFields,finalImage,finalServiceStatus,nextStatus,needsReview?'':venue.review_note,nextStatus,req.params.id);
  if(needsReview) db.prepare('INSERT INTO venue_reviews(venue_id,actor_user_id,action,note) VALUES(?,?,?,?)').run(venue.id,req.user.id,'resubmitted','Owner updated requested changes and resubmitted')
  res.json(db.prepare('SELECT * FROM venues WHERE id=?').get(req.params.id))
 })
@@ -179,6 +224,9 @@ app.patch('/api/me', auth, (req,res) => {
 app.get('/api/venues/:id/slots', (req,res) => {
  const date = String(req.query.date || bangkokDate())
  if(!validDate(date)) return res.status(400).json({error:'เธงเธฑเธเธ—เธตเนเนเธกเนเธ–เธนเธเธ•เนเธญเธ'})
+ const venue=db.prepare("SELECT service_status,review_status FROM venues WHERE id=?").get(req.params.id)
+ if(!venue||venue.review_status!=='approved') return res.status(404).json({error:'ไม่พบสนาม'})
+ if(venue.service_status!=='active') return res.json({date,slots:[]})
  const booked = new Set(db.prepare('SELECT start_time FROM bookings WHERE venue_id=? AND booking_date=? AND status=?').all(req.params.id,date,'confirmed').map(x=>x.start_time))
  const slots = ['16:00','17:00','18:00','19:00','20:00','21:00','22:00'].map(start => ({start,end:`${String(Number(start.slice(0,2))+1).padStart(2,'0')}:00`,available:!booked.has(start)}))
  res.json({date,slots})
@@ -187,8 +235,9 @@ app.post('/api/bookings', auth, (req,res) => {
  const {venueId,bookingDate,startTime,endTime,totalPrice} = req.body
  if (!venueId || !bookingDate || !startTime || !endTime) return res.status(400).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
  if (!validDate(String(bookingDate))) return res.status(400).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
- const venue=db.prepare('SELECT id,price_per_hour,owner_id,name FROM venues WHERE id=?').get(venueId)
- if(!venue) return res.status(404).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
+ const venue=db.prepare("SELECT id,price_per_hour,owner_id,name,review_status,service_status FROM venues WHERE id=?").get(venueId)
+ if(!venue) return res.status(404).json({error:'ไม่พบสนาม'})
+ if(venue.review_status!=='approved'||venue.service_status!=='active') return res.status(409).json({error:'สนามนี้ยังไม่พร้อมให้บริการ'})
  const clientPrice=Number(totalPrice)
  if(!Number.isFinite(clientPrice)||clientPrice<=0||clientPrice!==Number(venue.price_per_hour)) return res.status(400).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
  try {
@@ -433,7 +482,11 @@ app.patch('/api/admin/venues/:id/owner', auth, (req,res) => {
   if(!owner) return res.status(400).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
  }
  db.prepare('UPDATE venues SET owner_id=? WHERE id=?').run(ownerId,venue.id)
- res.json(db.prepare('SELECT * FROM venues WHERE id=?').get(venue.id))
+ if(ownerId!==null && !venue.facility_id){
+  const f=db.prepare('INSERT INTO facilities(owner_id,name,address) VALUES(?,?,?)').run(ownerId,venue.name,venue.address)
+  db.prepare('UPDATE venues SET facility_id=? WHERE id=?').run(Number(f.lastInsertRowid),venue.id)
+ }
+ res.json(db.prepare(`${publicVenueSelect} WHERE v.id=?`).get(venue.id))
 })
 
 app.listen(PORT, HOST, () => console.log('PorsBall API running on '+HOST+':'+PORT))

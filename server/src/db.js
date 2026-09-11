@@ -111,3 +111,24 @@ try { db.exec("ALTER TABLE venues ADD COLUMN reviewed_by INTEGER REFERENCES user
 try { db.exec("CREATE TABLE IF NOT EXISTS venue_reviews (id INTEGER PRIMARY KEY AUTOINCREMENT,venue_id INTEGER NOT NULL REFERENCES venues(id) ON DELETE CASCADE,actor_user_id INTEGER NOT NULL REFERENCES users(id),action TEXT NOT NULL,note TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)") } catch {}
 try { db.exec("CREATE INDEX IF NOT EXISTS idx_venues_review_status ON venues(review_status,submitted_at)") } catch {}
 try { db.exec("CREATE INDEX IF NOT EXISTS idx_venue_reviews_venue ON venue_reviews(venue_id,created_at)") } catch {}
+
+// Facility/field model: one owner can manage a venue location with many playable fields.
+try { db.exec(`CREATE TABLE IF NOT EXISTS facilities (id INTEGER PRIMARY KEY AUTOINCREMENT,owner_id INTEGER NOT NULL REFERENCES users(id),name TEXT NOT NULL,address TEXT NOT NULL,phone TEXT NOT NULL DEFAULT '',description TEXT NOT NULL DEFAULT '',image TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`) } catch {}
+try { db.exec('ALTER TABLE venues ADD COLUMN facility_id INTEGER REFERENCES facilities(id)') } catch {}
+try { db.exec("ALTER TABLE venues ADD COLUMN image TEXT") } catch {}
+try { db.exec("ALTER TABLE venues ADD COLUMN service_status TEXT NOT NULL DEFAULT 'active'") } catch {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_facilities_owner ON facilities(owner_id,id)') } catch {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_venues_facility ON venues(facility_id,id)') } catch {}
+try { db.exec("CREATE INDEX IF NOT EXISTS idx_venues_service_status ON venues(service_status,review_status)") } catch {}
+
+// Backfill existing standalone venues into their own facilities without changing booking IDs.
+try {
+ const existing=db.prepare('SELECT id,owner_id,name,address,facility_id FROM venues WHERE facility_id IS NULL').all()
+ const addFacility=db.prepare('INSERT INTO facilities(owner_id,name,address) VALUES(?,?,?)')
+ const setFacility=db.prepare('UPDATE venues SET facility_id=? WHERE id=?')
+ for(const v of existing){
+  if(!v.owner_id) continue
+  const f=addFacility.run(v.owner_id,v.name,v.address)
+  setFacility.run(Number(f.lastInsertRowid),v.id)
+ }
+} catch (error) { console.error('facility backfill failed', error) }

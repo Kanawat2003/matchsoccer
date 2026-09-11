@@ -41,3 +41,21 @@
 
 .owner-head-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.owner-review-box{margin:16px 0;border:1px solid rgba(92,120,82,.2)}
 .owner-review-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:14px 0;border-top:1px solid rgba(92,120,82,.16);align-items:center}.owner-review-row:first-of-type{border-top:0}.owner-review-row small{display:block;margin-top:3px;color:#53665a}.owner-review-row p{grid-column:1/-1;margin:0;color:#7a4b21;font-weight:650}.review-pill{border-radius:999px;padding:5px 10px;font-weight:800;font-size:12px}.review-pending_review{background:#fff0c2;color:#795b00}.review-changes_requested{background:#ffe2b8;color:#814b00}.review-rejected{background:#ffd8d8;color:#8a2525}.review-approved{background:#dff2c7;color:#315d1f}
+
+/* Facility workspace */
+.facility-list{display:grid;gap:18px;margin-top:18px}
+.facility-card{padding:0;overflow:hidden;background:linear-gradient(145deg,#102217,#0b1910);border-color:rgba(255,255,255,.09);box-shadow:0 14px 34px rgba(0,0,0,.2)}
+.facility-cover{min-height:150px;position:relative;display:flex;align-items:flex-end;gap:16px;padding:20px;background:linear-gradient(180deg,rgba(8,25,15,.1),rgba(8,25,15,.9))}
+.facility-cover:has(img){background:#0b1910}
+.facility-cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.62}
+.facility-cover>span{font-size:58px;position:relative}.facility-cover>div{position:relative;z-index:1}.facility-cover b{display:block;font-size:25px;letter-spacing:-.02em}.facility-cover small{display:block;margin-top:6px;color:#c0cdc3;overflow-wrap:anywhere}
+.facility-summary{display:flex;flex-wrap:wrap;gap:8px;padding:14px 20px;border-top:1px solid rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.07)}
+.facility-summary span{padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.045);color:#9eb0a4;font-size:12px}.facility-summary b{color:#fff}.facility-description{padding:0 20px;margin:14px 0 0;color:#8fa195;line-height:1.6}
+.facility-actions{display:flex;gap:8px;flex-wrap:wrap;padding:16px 20px}.facility-actions button{min-height:42px}.facility-actions .primary{margin-left:auto}
+.field-list{padding:0 20px 20px}.field-list-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.field-list-head h3{margin:0;font-size:17px}.field-list-head span{font-size:12px;color:#809188}
+.field-row{display:grid;grid-template-columns:56px minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid rgba(255,255,255,.07)}
+.field-row>img,.field-thumb{width:56px;height:56px;border-radius:12px;object-fit:cover}.field-thumb{display:grid;place-items:center;background:#183428;font-size:25px}.field-main{min-width:0}.field-main b{display:block}.field-main small{display:block;margin-top:3px;color:#8fa195;overflow-wrap:anywhere}.field-review{font-size:11px;font-weight:800;white-space:nowrap}.field-review.review-approved{color:#8ff0b4}.field-review.review-pending_review{color:#ffd27d}.field-review.review-changes_requested{color:#ffbd76}.field-review.review-rejected{color:#ff9a9a}.field-row button{min-height:38px}
+.owner-image-picker>label{display:grid;gap:6px}.image-preview{position:relative;margin-top:8px}.image-preview img{display:block;width:100%;max-height:220px;object-fit:cover;border-radius:12px}.image-preview button{position:absolute;right:8px;top:8px}.image-error{display:block;margin-top:6px;color:#ff9a9a}
+
+@media(max-width:700px){.facility-cover{min-height:135px;padding:16px}.facility-cover b{font-size:21px}.facility-summary{padding:12px 16px}.facility-actions{padding:14px 16px}.facility-actions .primary{margin-left:0;width:100%}.field-list{padding:0 16px 16px}.field-row{grid-template-columns:48px minmax(0,1fr) auto}.field-row>img,.field-thumb{width:48px;height:48px}.field-row .field-review{grid-column:2}.field-row>button{grid-column:3;grid-row:1 / span 2}.facility-description{padding:0 16px}}
+@media(max-width:480px){.facility-cover{min-height:120px}.facility-cover>span{font-size:44px}.facility-cover b{font-size:19px}.field-row{grid-template-columns:44px minmax(0,1fr)}.field-row>img,.field-thumb{width:44px;height:44px}.field-row .field-review{grid-column:2}.field-row>button{grid-column:2;grid-row:auto;justify-self:start}.facility-summary span{font-size:11px}}
