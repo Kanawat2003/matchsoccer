@@ -1,4 +1,4 @@
-﻿import express from 'express'
+import express from 'express'
 import cors from 'cors'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
@@ -77,7 +77,7 @@ app.get('/api/owner/venues', auth, (req,res) => {
  if (req.user.role !== 'owner' && req.user.role !== 'admin') return res.status(403).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
  const rows = req.user.role === 'admin'
   ? db.prepare('SELECT * FROM venues ORDER BY id DESC').all()
-  : db.prepare("SELECT * FROM venues WHERE owner_id=? AND review_status<>'approved' ORDER BY id DESC").all(req.user.id)
+  : db.prepare("SELECT * FROM venues WHERE owner_id=? ORDER BY id DESC").all(req.user.id)
  res.json(rows)
 })
 app.patch('/api/owner/venues/:id', auth, (req,res) => {
@@ -442,7 +442,7 @@ app.listen(PORT, HOST, () => console.log('PorsBall API running on '+HOST+':'+POR
 const venueInput=(body)=>({name:String(body.name||'').trim(),area:String(body.area||'').trim(),address:String(body.address||'').trim(),price:Number(body.price_per_hour ?? body.pricePerHour),roof:body.roof?1:0,fieldTypes:String(body.field_types ?? body.fieldTypes ?? '').trim()})
 app.get('/api/owner/venue-requests', auth, (req,res)=>{
  if(req.user.role!=='owner'&&req.user.role!=='admin') return res.status(403).json({error:'เนเธกเนเธกเธตเธชเธดเธ—เธเธดเนเธเธฑเธ”เธเธฒเธฃเธเธณเธเธญเธชเธเธฒเธก'})
- const rows=req.user.role==='admin'?db.prepare('SELECT * FROM venues WHERE review_status<>? ORDER BY submitted_at DESC,id DESC').all('approved'):db.prepare('SELECT * FROM venues WHERE owner_id=? ORDER BY id DESC').all(req.user.id)
+ const rows=req.user.role==='admin'?db.prepare('SELECT * FROM venues WHERE review_status<>? ORDER BY submitted_at DESC,id DESC').all('approved'):db.prepare("SELECT * FROM venues WHERE owner_id=? AND review_status<>'approved' ORDER BY id DESC").all(req.user.id)
  res.json(rows)
 })
 app.post('/api/owner/venues', auth, (req,res)=>{
