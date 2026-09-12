@@ -157,7 +157,8 @@ app.post('/api/auth/register', async (req,res) => {
  try {
   const hash = await bcrypt.hash(password,10)
   const info = db.prepare('INSERT INTO users(name,email,password_hash,phone,address,birth_date) VALUES(?,?,?,?,?,?)').run(name,email,hash,phone,address,birthDate)
-  const user = db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar,birth_date FROM users WHERE id=?').get(info.lastInsertRowid)
+  const userRow = db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar,birth_date FROM users WHERE id=?').get(info.lastInsertRowid)
+  const user = {...userRow,age:userRow.birth_date?calcAge(userRow.birth_date):null}
   res.status(201).json({token:tokenFor(user),user})
  } catch { res.status(409).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'}) }
 })
@@ -221,7 +222,8 @@ app.patch('/api/me', auth, (req,res) => {
  if(!address||address.length>300)return res.status(400).json({error:'เธเธฃเธธเธ“เธฒเธเธฃเธญเธเธ—เธตเนเธญเธขเธนเนเนเธซเนเธ–เธนเธเธ•เนเธญเธ'})
  if(avatar && (!/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/i.test(avatar)||avatar.length>180000)) return res.status(400).json({error:'เธฃเธนเธเนเธเธฃเนเธเธฅเนเนเธกเนเธ–เธนเธเธ•เนเธญเธเธซเธฃเธทเธญเธกเธตเธเธเธฒเธ”เนเธซเธเนเน€เธเธดเธเนเธ'})
  db.prepare('UPDATE users SET name=?,phone=?,address=?,avatar=? WHERE id=?').run(name,phone,address,avatar,req.user.id)
- res.json(db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar FROM users WHERE id=?').get(req.user.id))
+ const user=db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar,birth_date FROM users WHERE id=?').get(req.user.id)
+ res.json({...user,age:user.birth_date?calcAge(user.birth_date):null})
 })
 
 app.get('/api/venues/:id/slots', (req,res) => {
@@ -307,7 +309,7 @@ app.post('/api/matches', auth, (req,res) => {
  if(!Number.isFinite(matchFee)||matchFee<=0) return res.status(400).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
  const existingMatch=db.prepare('SELECT * FROM matches WHERE booking_id=? ORDER BY id DESC LIMIT 1').get(booking.id)
  if(existingMatch) return res.status(409).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
- const result=db.prepare('INSERT INTO matches(creator_id,venue_id,title,match_date,start_time,fee,max_players,booking_id,open_for_join) VALUES(?,?,?,?,?,?,?,?,1)').run(req.user.id,booking.venue_id,title.trim(),booking.booking_date,booking.start_time,matchFee,max,booking.id)
+ const result=db.prepare('INSERT INTO matches(creator_id,venue_id,title,match_date,start_time,end_time,fee,max_players,booking_id,open_for_join) VALUES(?,?,?,?,?,?,?,?,?,1)').run(req.user.id,booking.venue_id,title.trim(),booking.booking_date,booking.start_time,booking.end_time,matchFee,max,booking.id)
  db.prepare('INSERT INTO match_players(match_id,user_id) VALUES(?,?)').run(result.lastInsertRowid,req.user.id)
  res.status(201).json(db.prepare('SELECT * FROM matches WHERE id=?').get(result.lastInsertRowid))
 })
