@@ -28,7 +28,7 @@ async function main(){
  const mm=await call('matches excludes closed','/matches')
  if(mm.some(x=>x.id===m.id))throw Error('closed match still visible')
  const cancelVenue={id:1}; const second=await findAvailableSlot(cancelVenue.id,3)
- const b2=await call('booking for cancel','/bookings',{method:'POST',token:H.token,body:JSON.stringify({venueId:cancelVenue.id,bookingDate:second.date,startTime:second.slot.start,endTime:second.slot.end,totalPrice:900})})
+ const b2=await call('booking for cancel','/bookings',{method:'POST',token:H.token,body:JSON.stringify({venueId:cancelVenue.id,bookingDate:second.date,startTime:second.slot.start,endTime:second.slot.end,totalPrice:1200})})
  const m2=await call('create cancel match','/matches',{method:'POST',token:H.token,body:JSON.stringify({bookingId:b2.id,title:`E2E Cancel ${stamp}`,fee:90,maxPlayers:2})})
  await call('cancel booking',`/bookings/${b2.id}/cancel`,{method:'POST',token:H.token})
  const mm2=await call('matches excludes cancelled','/matches')
