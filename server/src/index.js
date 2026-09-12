@@ -27,7 +27,7 @@ const auth = (req,res,next) => {
   const token=(req.headers.authorization || '').replace('Bearer ','')
   req.user=jwt.verify(token,SECRET)
   const dbUser=db.prepare('SELECT id,role,auth_version FROM users WHERE id=?').get(req.user.id)
-  if(!dbUser) return res.status(401).json({error:'เนเธกเนเธเธเธเธนเนเนเธเนเธเธฒเธ'})
+  if(!dbUser) return res.status(401).json({error:'ไม่พบผู้ใช้งาน'})
   if(Number(req.user.ver||0)!==Number(dbUser.auth_version||0)) return res.status(401).json({error:'เน€เธเธชเธเธฑเธเธซเธกเธ”เธญเธฒเธขเธธ เธเธฃเธธเธ“เธฒเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเนเธซเธกเน'})
   req.user=dbUser
   next()
@@ -35,15 +35,17 @@ const auth = (req,res,next) => {
 }
 
 const notify = (userId,type,title,message) => {
- const titles={booking:'เธกเธตเธเธฒเธฃเธเธญเธเธชเธเธฒเธกเนเธซเธกเน',cancel:'เธเธฒเธฃเธเธญเธเธ–เธนเธเธขเธเน€เธฅเธดเธ',match_close:'เน€เธเนเธฒเธเธญเธเธเธฑเธ”เธเธดเธ”เธฃเธฑเธเธเธ',join:'เธกเธตเธเธเน€เธเนเธฒเธฃเนเธงเธกเธเธฑเธ”',leave:'เธกเธตเธเธเธญเธญเธเธเธฒเธเธเธฑเธ”',remove:'เธเธธเธ“เธ–เธนเธเธเธณเธญเธญเธเธเธฒเธเธเธฑเธ”'}
- const safeTitle=isBrokenThai(title)?(titles[type]||'เธกเธตเธเธฒเธฃเนเธเนเธเน€เธ•เธทเธญเธเนเธซเธกเน'):title
- const safeMessage=isBrokenThai(message)?({booking:'เธกเธตเธเธฒเธฃเธเธญเธเธชเธเธฒเธกเนเธซเธกเน',cancel:'เธเธฒเธฃเธเธญเธเธ–เธนเธเธขเธเน€เธฅเธดเธ',match_close:'เน€เธเนเธฒเธเธญเธเธเธฑเธ”เธเธดเธ”เธฃเธฑเธเธเธ',join:'เธกเธตเธเธเน€เธเนเธฒเธฃเนเธงเธกเธเธฑเธ”',leave:'เธกเธตเธเธเธญเธญเธเธเธฒเธเธเธฑเธ”',remove:'เธเธธเธ“เธ–เธนเธเธเธณเธญเธญเธเธเธฒเธเธเธฑเธ”'}[type]||'เธกเธตเธเธฒเธฃเนเธเนเธเน€เธ•เธทเธญเธเนเธซเธกเน'):message
+ const titles={booking:'มีการจองสนามใหม่',cancel:'การจองถูกยกเลิก',match_close:'เจ้าของนัดปิดรับคน',join:'มีคนเข้าร่วมนัด',leave:'มีคนออกจากนัด',remove:'คุณถูกนำออกจากนัด'}
+ const messages={booking:'มีการจองสนามใหม่',cancel:'การจองสนามถูกยกเลิก',match_close:'เจ้าของนัดปิดรับสมาชิกแล้ว',join:'มีผู้เล่นเข้าร่วมการนัดหมาย',leave:'มีผู้เล่นออกจากการนัดหมาย',remove:'คุณถูกนำออกจากการนัดหมาย'}
+ const safeTitle=isBrokenThai(title)?(titles[type]||'มีการแจ้งเตือนใหม่'):title
+ const safeMessage=isBrokenThai(message)?(messages[type]||'มีการแจ้งเตือนใหม่'):message
  return db.prepare('INSERT INTO notifications(user_id,type,title,message) VALUES(?,?,?,?)').run(userId,type,safeTitle,safeMessage)
 }
 
 const bangkokDate = () => new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date())
 const validDate = (date) => /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(new Date(`${date}T00:00:00+07:00`).getTime()) && new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date(`${date}T00:00:00+07:00`))===date
 const bookingState = (date,start,end) => { const now=new Date(); const from=new Date(`${date}T${start}:00+07:00`); const to=new Date(`${date}T${end}:00+07:00`); return now>=to?'EXPIRED':now>=from?'IN_PROGRESS':'UPCOMING' }
+const calcAge = (birthDate) => { const b=new Date(`${birthDate}T00:00:00+07:00`), now=new Date(); let age=now.getUTCFullYear()-b.getUTCFullYear(); const nowMonth=now.getUTCMonth(), birthMonth=b.getUTCMonth(); if(nowMonth<birthMonth || (nowMonth===birthMonth && now.getUTCDate()<b.getUTCDate())) age--; return age>=0?age:null }
 
 app.get('/api/health', (_,res) => res.json({ok:true, service:'PorsBall API'}))
 const publicVenueSelect=`SELECT v.*,COALESCE(f.name,v.name) facility_name,COALESCE(f.address,v.address) facility_address,f.phone facility_phone,f.description facility_description,f.image facility_image,
@@ -90,7 +92,7 @@ app.post('/api/owner/facilities/:id/fields', auth, (req,res) => {
  if(!name||!area||!address||!fieldTypes||!Number.isFinite(price)||price<=0) return res.status(400).json({error:'กรุณากรอกข้อมูลสนามให้ครบ'})
  if(req.body.image&&!image) return res.status(400).json({error:'รูปสนามไม่ถูกต้องหรือมีขนาดใหญ่เกินไป'})
  const r=db.prepare("INSERT INTO venues(name,area,address,rating,price_per_hour,roof,field_types,owner_id,facility_id,image,service_status,review_status,submitted_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,'pending_review',CURRENT_TIMESTAMP)").run(name,area,address,0,price,roof,fieldTypes,req.user.id,f.id,image,'active')
- res.status(201).json(db.prepare(`${publicVenueSelect} WHERE v.id=?`).get(r.lastInsertRowId))
+ res.status(201).json(db.prepare(`${publicVenueSelect} WHERE v.id=?`).get(r.lastInsertRowid))
 })
 app.get('/api/venues/:id', (req,res) => {
  const venue = db.prepare(`${publicVenueSelect} WHERE v.id=? AND v.review_status='approved' AND v.service_status='active'`).get(req.params.id)
@@ -124,7 +126,7 @@ app.get('/api/owner/venues', auth, (req,res) => {
 app.patch('/api/owner/venues/:id', auth, (req,res) => {
  if (req.user.role !== 'owner' && req.user.role !== 'admin') return res.status(403).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
  const venue = db.prepare('SELECT * FROM venues WHERE id=?').get(req.params.id)
- if (!venue) return res.status(404).json({error:'เนเธกเนเธเธเธชเธเธฒเธก'})
+ if (!venue) return res.status(404).json({error:'ไม่พบสนาม'})
  if (req.user.role !== 'admin' && venue.owner_id !== req.user.id) return res.status(403).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
  const {name,area,address,pricePerHour,price_per_hour,roof,fieldTypes,field_types,image,serviceStatus} = req.body
  const finalPrice = Number(pricePerHour ?? price_per_hour)
@@ -144,8 +146,9 @@ app.patch('/api/owner/venues/:id', auth, (req,res) => {
  res.json(db.prepare('SELECT * FROM venues WHERE id=?').get(req.params.id))
 })
 app.post('/api/auth/register', async (req,res) => {
- const name=String(req.body.name||'').trim(), email=String(req.body.email||'').trim().toLowerCase(), password=String(req.body.password||''), phone=String(req.body.phone||'').trim(), address=String(req.body.address||'').trim()
- if (!name || !email || !password || !phone || !address) return res.status(400).json({error:'เธเธฃเธธเธ“เธฒเธเธฃเธญเธเธเนเธญเธกเธนเธฅเนเธซเนเธเธฃเธ'})
+ const name=String(req.body.name||'').trim(), email=String(req.body.email||'').trim().toLowerCase(), password=String(req.body.password||''), phone=String(req.body.phone||'').trim(), address=String(req.body.address||'').trim(), birthDate=String(req.body.birthDate||'').trim()
+ if (!name || !email || !password || !phone || !address || !birthDate) return res.status(400).json({error:'กรุณากรอกข้อมูลให้ครบ'})
+ if(!validDate(birthDate)||birthDate>bangkokDate()||calcAge(birthDate)===null) return res.status(400).json({error:'วันเกิดไม่ถูกต้อง'})
  if (name.length>80) return res.status(400).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
  if (password.length<8) return res.status(400).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
@@ -153,8 +156,8 @@ app.post('/api/auth/register', async (req,res) => {
  if (address.length>300) return res.status(400).json({error:'เธ—เธตเนเธญเธขเธนเนเธขเธฒเธงเน€เธเธดเธเนเธ'})
  try {
   const hash = await bcrypt.hash(password,10)
-  const info = db.prepare('INSERT INTO users(name,email,password_hash,phone,address) VALUES(?,?,?,?,?)').run(name,email,hash,phone,address)
-  const user = db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar FROM users WHERE id=?').get(info.lastInsertRowid)
+  const info = db.prepare('INSERT INTO users(name,email,password_hash,phone,address,birth_date) VALUES(?,?,?,?,?,?)').run(name,email,hash,phone,address,birthDate)
+  const user = db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar,birth_date FROM users WHERE id=?').get(info.lastInsertRowid)
   res.status(201).json({token:tokenFor(user),user})
  } catch { res.status(409).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'}) }
 })
@@ -163,7 +166,7 @@ app.post('/api/auth/login', async (req,res) => {
  if(!email || !password) return res.status(400).json({error:'เธเธฃเธธเธ“เธฒเธเธฃเธญเธเธญเธตเน€เธกเธฅเนเธฅเธฐเธฃเธซเธฑเธชเธเนเธฒเธ'})
  const user = db.prepare('SELECT * FROM users WHERE email=?').get(email)
  if (!user || !(await bcrypt.compare(password,user.password_hash))) return res.status(401).json({error:'เธญเธตเน€เธกเธฅเธซเธฃเธทเธญเธฃเธซเธฑเธชเธเนเธฒเธเนเธกเนเธ–เธนเธเธ•เนเธญเธ'})
- const safe = {id:user.id,name:user.name,email:user.email,role:user.role,points:user.points,wins:user.wins,losses:user.losses,phone:user.phone||null,address:user.address||null,avatar:user.avatar||null,auth_version:user.auth_version}
+ const safe = {id:user.id,name:user.name,email:user.email,role:user.role,points:user.points,wins:user.wins,losses:user.losses,phone:user.phone||null,address:user.address||null,avatar:user.avatar||null,birth_date:user.birth_date||null,age:user.birth_date?calcAge(user.birth_date):null,auth_version:user.auth_version}
  res.json({token:tokenFor(safe),user:safe})
 })
 const hashResetCode = (code) => crypto.createHash('sha256').update(code).digest('hex')
@@ -207,8 +210,8 @@ app.post('/api/notifications/:id/read', auth, (req,res) => { db.prepare('UPDATE 
 app.post('/api/notifications/read-all', auth, (req,res) => { db.prepare('UPDATE notifications SET read=1 WHERE user_id=?').run(req.user.id); res.json({ok:true}) })
 
 app.get('/api/me', auth, (req,res) => {
- const user = db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar,created_at FROM users WHERE id=?').get(req.user.id)
- res.json(user)
+ const user = db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar,birth_date,created_at FROM users WHERE id=?').get(req.user.id)
+ res.json({...user,age:user.birth_date?calcAge(user.birth_date):null})
 })
 app.patch('/api/me', auth, (req,res) => {
  const name=String(req.body.name||'').trim(), phone=String(req.body.phone||'').trim(), address=String(req.body.address||'').trim()
@@ -346,6 +349,7 @@ app.post('/api/matches/:id/join', auth, (req,res) => {
    const count=db.prepare('SELECT COUNT(*) n FROM match_players WHERE match_id=?').get(match.id).n
    if(count>=match.max_players) return false
    db.prepare('INSERT INTO match_players(match_id,user_id) VALUES(?,?)').run(match.id,req.user.id)
+   db.prepare("INSERT OR IGNORE INTO match_attendance(match_id,user_id,status) VALUES(?,?,'pending')").run(match.id,req.user.id)
    return true
   })()
   if(!joined) return res.status(409).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
@@ -354,10 +358,24 @@ app.post('/api/matches/:id/join', auth, (req,res) => {
  res.json({ok:true,message:'เน€เธเนเธฒเธฃเนเธงเธกเธเธฑเธ”เธชเธณเน€เธฃเนเธ'})
 })
 
+const syncAttendance = (matchId) => {
+ const m=db.prepare('SELECT match_date,start_time,end_time FROM matches WHERE id=?').get(matchId)
+ if(!m) return
+ const members=db.prepare('SELECT user_id FROM match_players WHERE match_id=?').all(matchId)
+ const insert=db.prepare("INSERT OR IGNORE INTO match_attendance(match_id,user_id,status) VALUES(?,?,'pending')")
+ members.forEach(x=>insert.run(matchId,x.user_id))
+ if(bookingState(m.match_date,m.start_time,m.end_time)==='EXPIRED'){
+  db.prepare("UPDATE match_attendance SET status='no_show',updated_at=CURRENT_TIMESTAMP WHERE match_id=? AND status='pending'").run(matchId)
+ }
+}
+const syncReliability = (userId) => {
+ const row=db.prepare("SELECT SUM(CASE WHEN status='attended' THEN 1 ELSE 0 END) attended_count,SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) cancelled_count,SUM(CASE WHEN status='no_show' THEN 1 ELSE 0 END) no_show_count FROM match_attendance WHERE user_id=?").get(userId)
+ db.prepare("INSERT INTO user_reliability(user_id,attended_count,cancelled_count,no_show_count) VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET attended_count=excluded.attended_count,cancelled_count=excluded.cancelled_count,no_show_count=excluded.no_show_count,updated_at=CURRENT_TIMESTAMP").run(userId,Number(row.attended_count||0),Number(row.cancelled_count||0),Number(row.no_show_count||0))
+}
 app.get('/api/matches/:id/players', auth, (req,res) => {
  const m=db.prepare('SELECT id,creator_id,max_players,open_for_join FROM matches WHERE id=?').get(req.params.id)
  if(!m) return res.status(404).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
- const players=db.prepare('SELECT u.id,u.name,CASE WHEN u.id=? THEN 1 ELSE 0 END AS owner FROM match_players mp JOIN users u ON u.id=mp.user_id WHERE mp.match_id=? ORDER BY owner DESC,u.name').all(m.creator_id,m.id)
+ syncAttendance(m.id); const players=db.prepare("SELECT u.id,u.name,u.phone,u.birth_date,CASE WHEN u.birth_date IS NOT NULL THEN CAST((julianday(date('now','+7 hours'))-julianday(u.birth_date))/365.2425 AS INTEGER) ELSE NULL END AS age,ma.status attendance_status,CASE WHEN u.id=? THEN 1 ELSE 0 END AS owner FROM match_players mp JOIN users u ON u.id=mp.user_id LEFT JOIN match_attendance ma ON ma.match_id=mp.match_id AND ma.user_id=mp.user_id WHERE mp.match_id=? ORDER BY owner DESC,u.name").all(m.creator_id,m.id)
  res.json({match:m,players})
 })
 app.post('/api/matches/:id/leave', auth, (req,res) => {
@@ -366,6 +384,7 @@ app.post('/api/matches/:id/leave', auth, (req,res) => {
  if(m.booking_status!=='confirmed') return res.status(409).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
  if(bookingState(m.match_date,m.start_time,m.end_time)!=='UPCOMING') return res.status(409).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
  if(m.creator_id===req.user.id) return res.status(409).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
+ db.prepare("UPDATE match_attendance SET status='cancelled',updated_at=CURRENT_TIMESTAMP WHERE match_id=? AND user_id=?").run(m.id,req.user.id)
  const result=db.prepare('DELETE FROM match_players WHERE match_id=? AND user_id=?').run(m.id,req.user.id)
  if(!result.changes) return res.status(409).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
  const u=db.prepare('SELECT name FROM users WHERE id=?').get(req.user.id); notify(m.creator_id,'leave','เน€เธเธเน€เธเธ•เน€เธ"เน€เธโขเน€เธเธเน€เธเธเน€เธยเน€เธหเน€เธเธ’เน€เธยเน€เธโขเน€เธเธ‘เน€เธ"',`${u?.name||'เน€เธล“เน€เธเธเน€เธโ€ฐเน€เธโฌเน€เธเธ…เน€เธหเน€เธโข'} เน€เธเธเน€เธเธเน€เธยเน€เธยเน€เธเธ’เน€เธยเน€เธยเน€เธเธ‘เน€เธโ€ ${m.title}`)
@@ -378,12 +397,46 @@ app.delete('/api/matches/:id/players/:userId', auth, (req,res) => {
  if(bookingState(m.match_date,m.start_time,m.end_time)!=='UPCOMING') return res.status(409).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
  if(m.creator_id!==req.user.id) return res.status(403).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
  if(Number(req.params.userId)===m.creator_id) return res.status(409).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
+ db.prepare("UPDATE match_attendance SET status='cancelled',updated_at=CURRENT_TIMESTAMP WHERE match_id=? AND user_id=?").run(m.id,req.params.userId)
  const result=db.prepare('DELETE FROM match_players WHERE match_id=? AND user_id=?').run(m.id,req.params.userId)
  if(!result.changes) return res.status(404).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
  notify(Number(req.params.userId),'remove','เน€เธโ€“เน€เธเธเน€เธยเน€เธโขเน€เธเธ“เน€เธเธเน€เธเธเน€เธยเน€เธหเน€เธเธ’เน€เธยเน€เธโขเน€เธเธ‘เน€เธ"',`เน€เธยเน€เธเธเน€เธโ€เน€เธโ€“เน€เธเธเน€เธยเน€เธยเน€เธเธ“เน€เธเธเน€เธเธเน€เธยเน€เธยเน€เธเธ’เน€เธยเน€เธยเน€เธเธ‘เน€เธโ€ ${m.title}`)
  res.json({ok:true})
 })
 
+app.get('/api/matches/:id/reliability', auth, (req,res) => {
+ const m=db.prepare('SELECT id,creator_id,match_date,start_time,end_time FROM matches WHERE id=?').get(req.params.id)
+ if(!m)return res.status(404).json({error:'ไม่พบข้อมูลนัด'})
+ syncAttendance(m.id)
+ const rows=db.prepare("SELECT mp.user_id,u.name,ma.status attendance_status,ur.attended_count,ur.cancelled_count,ur.no_show_count FROM match_players mp JOIN users u ON u.id=mp.user_id LEFT JOIN match_attendance ma ON ma.match_id=mp.match_id AND ma.user_id=mp.user_id LEFT JOIN user_reliability ur ON ur.user_id=mp.user_id WHERE mp.match_id=? ORDER BY mp.user_id").all(m.id)
+ rows.forEach(x=>syncReliability(x.user_id))
+ res.json({match:m,players:rows})
+})
+app.post('/api/matches/:id/check-in/:userId', auth, (req,res) => {
+ const m=db.prepare('SELECT id,creator_id,match_date,start_time,end_time FROM matches WHERE id=?').get(req.params.id)
+ if(!m)return res.status(404).json({error:'ไม่พบข้อมูลนัด'})
+ if(m.creator_id!==req.user.id && Number(req.params.userId)!==req.user.id)return res.status(403).json({error:'คุณไม่มีสิทธิ์เช็กชื่อสมาชิกคนนี้'})
+ const player=db.prepare('SELECT 1 FROM match_players WHERE match_id=? AND user_id=?').get(m.id,req.params.userId)
+ if(!player)return res.status(404).json({error:'ไม่พบสมาชิกในนัด'})
+ const start=new Date(m.match_date+'T'+m.start_time+':00+07:00')
+ const end=new Date(m.match_date+'T'+m.end_time+':00+07:00')
+ const now=new Date(),openAt=new Date(start.getTime()-2*60*60*1000),closeAt=new Date(end.getTime()+30*60*1000)
+ if(now<openAt||now>closeAt)return res.status(409).json({error:'ยังไม่ถึงช่วงเวลาสำหรับเช็กชื่อ'})
+ syncAttendance(m.id)
+ db.prepare("UPDATE match_attendance SET status='attended',checked_in_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE match_id=? AND user_id=?").run(m.id,req.params.userId)
+ syncReliability(Number(req.params.userId))
+ res.json({ok:true})
+})
+app.post('/api/matches/:id/finalize-attendance', auth, (req,res) => {
+ const m=db.prepare('SELECT id,creator_id,match_date,start_time,end_time FROM matches WHERE id=?').get(req.params.id)
+ if(!m)return res.status(404).json({error:'ไม่พบข้อมูลนัด'})
+ if(m.creator_id!==req.user.id)return res.status(403).json({error:'เฉพาะเจ้าของนัดเท่านั้นที่ปิดผลนัดได้'})
+ if(bookingState(m.match_date,m.start_time,m.end_time)!=='EXPIRED')return res.status(409).json({error:'นัดยังไม่จบ'})
+ syncAttendance(m.id)
+ const ids=db.prepare('SELECT user_id FROM match_attendance WHERE match_id=?').all(m.id)
+ ids.forEach(x=>syncReliability(x.user_id))
+ res.json({ok:true})
+})
 app.post('/api/split-bills', auth, (req,res) => {
  const {bookingId,shareCount,names=[]} = req.body
  const booking = db.prepare("SELECT * FROM bookings WHERE id=? AND user_id=? AND status='confirmed'").get(bookingId,req.user.id)
@@ -535,7 +588,7 @@ app.patch('/api/admin/venues/:id/review', auth, (req,res)=>{
  if(!['approve','request_changes','reject'].includes(action)) return res.status(400).json({error:'เธชเธ–เธฒเธเธฐเธเธฒเธฃเธ•เธฃเธงเธเธชเธญเธเนเธกเนเธ–เธนเธเธ•เนเธญเธ'})
  if(action!=='approve'&&!note) return res.status(400).json({error:'เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธเน€เธซเธ•เธธเธเธฅเธเนเธญเธเธชเนเธเธเนเธญเธเธงเธฒเธกเนเธซเนเน€เธเนเธฒเธเธญเธเธชเธเธฒเธก'})
  const venue=db.prepare('SELECT * FROM venues WHERE id=?').get(req.params.id)
- if(!venue) return res.status(404).json({error:'เนเธกเนเธเธเธชเธเธฒเธก'})
+ if(!venue) return res.status(404).json({error:'ไม่พบสนาม'})
  const map={approve:'approved',request_changes:'changes_requested',reject:'rejected'};const status=map[action]
  db.prepare('UPDATE venues SET review_status=?,review_note=?,reviewed_at=CURRENT_TIMESTAMP,reviewed_by=? WHERE id=?').run(status,note,req.user.id,venue.id)
  db.prepare('INSERT INTO venue_reviews(venue_id,actor_user_id,action,note) VALUES(?,?,?,?)').run(venue.id,req.user.id,action,note)

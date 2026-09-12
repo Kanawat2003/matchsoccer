@@ -56,8 +56,12 @@ try { db.exec('ALTER TABLE users ADD COLUMN auth_version INTEGER NOT NULL DEFAUL
 try { db.exec('ALTER TABLE users ADD COLUMN phone TEXT') } catch {}
 try { db.exec('ALTER TABLE users ADD COLUMN address TEXT') } catch {}
 try { db.exec('ALTER TABLE users ADD COLUMN avatar TEXT') } catch {}
+try { db.exec('ALTER TABLE users ADD COLUMN birth_date TEXT') } catch {}
 try { db.exec('ALTER TABLE matches ADD COLUMN booking_id INTEGER REFERENCES bookings(id)') } catch {}
 try { db.exec('ALTER TABLE matches ADD COLUMN open_for_join INTEGER NOT NULL DEFAULT 0') } catch {}
+try { db.exec("CREATE TABLE IF NOT EXISTS match_attendance (id INTEGER PRIMARY KEY AUTOINCREMENT,match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,status TEXT NOT NULL DEFAULT 'pending',checked_in_at TEXT,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE(match_id,user_id));") } catch {}
+try { db.exec("CREATE TABLE IF NOT EXISTS user_reliability (user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,attended_count INTEGER NOT NULL DEFAULT 0,cancelled_count INTEGER NOT NULL DEFAULT 0,no_show_count INTEGER NOT NULL DEFAULT 0,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);") } catch {}
+
 
 const venueSeed = [
  [1,'Goal Arena Rama 9','พระราม 9 · 2.3 กม.','ถนนพระราม 9 กรุงเทพฯ',4.8,1200,1,'5v5,7v7'],

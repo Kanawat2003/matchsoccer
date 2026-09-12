@@ -1,0 +1,3 @@
+import db from './src/db.js'
+const ids=db.prepare("SELECT id FROM users WHERE email LIKE 'qa%porsball.test'").all().map(x=>x.id)
+for(const id of ids) console.log(id,{bookings:db.prepare('SELECT count(*) n FROM bookings WHERE user_id=?').get(id).n,matches:db.prepare('SELECT count(*) n FROM matches WHERE creator_id=?').get(id).n,players:db.prepare('SELECT count(*) n FROM match_players WHERE user_id=?').get(id).n,reviews:db.prepare('SELECT count(*) n FROM reviews WHERE user_id=?').get(id).n,resets:db.prepare('SELECT count(*) n FROM password_resets WHERE user_id=?').get(id).n,venues:db.prepare('SELECT count(*) n FROM venues WHERE owner_id=?').get(id).n,facilities:db.prepare('SELECT count(*) n FROM facilities WHERE owner_id=?').get(id).n})

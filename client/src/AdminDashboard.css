@@ -40,3 +40,8 @@
 
 .venue-review-section{margin-top:16px}.venue-review-row{grid-template-columns:minmax(0,1fr) auto;align-items:start}.venue-review-row small{display:block;color:#53665a;margin-top:3px}.review-note{grid-column:1/-1!important;padding:8px 10px;border-radius:10px;background:#fff4dc;color:#744600!important;font-weight:650}.review-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}.review-actions button{min-width:110px}.admin-status.review-pending_review{background:#fff0c2;color:#795b00}.admin-status.review-changes_requested{background:#ffe2b8;color:#814b00}.admin-status.review-rejected{background:#ffd8d8;color:#8a2525}.admin-status.review-approved{background:#dff2c7;color:#315d1f}
 @media(max-width:700px){.venue-review-row{grid-template-columns:1fr}.owner-review-row{grid-template-columns:1fr}.owner-head-actions{width:100%}}
+
+/* Readability pass — improve contrast of secondary admin text */
+.admin-page .admin-row small,.admin-page .admin-row>div:nth-child(2),.venue-review-row small{color:#c7d4cc}
+.admin-page .admin-empty{color:#c5d3cb}.admin-page .admin-stats span{color:#c7d4cc}
+.admin-page .section-head p{color:#c7d4cc}.admin-role-filters button,.admin-booking-filters button{color:#d7e2da}
