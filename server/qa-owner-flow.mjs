@@ -3,7 +3,7 @@ const base='http://127.0.0.1:4001/api'
 const stamp=Date.now()
 const img='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
 const req=async(p,o={})=>{const r=await fetch(base+p,{...o,headers:{'Content-Type':'application/json',...(o.token?{Authorization:'Bearer '+o.token}:{})}});const t=await r.text();let d;try{d=JSON.parse(t)}catch{throw Error(p+' non-json '+r.status+' '+t.slice(0,500))};if(r.status<200||r.status>=300)throw Error(p+' '+r.status+' '+JSON.stringify(d));return d}
-const reg=async(prefix)=>req('/auth/register',{method:'POST',body:JSON.stringify({name:prefix+' '+stamp,email:prefix.toLowerCase().replace(/\s+/g,'')+stamp+'@porsball.test',password:'TestPass123!',phone:'0812345678',address:'Test Address'})})
+const reg=async(prefix)=>req('/auth/register',{method:'POST',body:JSON.stringify({name:prefix+' '+stamp,email:prefix.toLowerCase().replace(/\s+/g,'')+stamp+'@porsball.test',password:'TestPass123!',phone:'0812345678',address:'Test Address',birthDate:'2000-01-15'})})
 let owner,admin,player,F,V,b
 try {
  owner=await reg('QA Owner'); admin=await reg('QA Admin'); player=await reg('QA Player')

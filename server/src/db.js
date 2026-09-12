@@ -62,7 +62,9 @@ try { db.exec('ALTER TABLE matches ADD COLUMN open_for_join INTEGER NOT NULL DEF
 try { db.exec('ALTER TABLE matches ADD COLUMN end_time TEXT') } catch {}
 try { db.exec('UPDATE matches SET end_time=(SELECT b.end_time FROM bookings b WHERE b.id=matches.booking_id) WHERE end_time IS NULL') } catch {}
 try { db.exec("CREATE TABLE IF NOT EXISTS match_attendance (id INTEGER PRIMARY KEY AUTOINCREMENT,match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,status TEXT NOT NULL DEFAULT 'pending',checked_in_at TEXT,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE(match_id,user_id));") } catch {}
-try { db.exec("CREATE TABLE IF NOT EXISTS user_reliability (user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,attended_count INTEGER NOT NULL DEFAULT 0,cancelled_count INTEGER NOT NULL DEFAULT 0,no_show_count INTEGER NOT NULL DEFAULT 0,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);") } catch {}
+try { db.exec("CREATE TABLE IF NOT EXISTS user_reliability (user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,attended_count INTEGER NOT NULL DEFAULT 0,cancelled_count INTEGER NOT NULL DEFAULT 0,no_show_count INTEGER NOT NULL DEFAULT 0,reliability_score INTEGER NOT NULL DEFAULT 100,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);") } catch {}
+try { db.exec('ALTER TABLE user_reliability ADD COLUMN reliability_score INTEGER NOT NULL DEFAULT 100') } catch {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_user_reliability_score ON user_reliability(reliability_score)') } catch {}
 
 
 const venueSeed = [

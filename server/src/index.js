@@ -372,7 +372,15 @@ const syncAttendance = (matchId) => {
 }
 const syncReliability = (userId) => {
  const row=db.prepare("SELECT SUM(CASE WHEN status='attended' THEN 1 ELSE 0 END) attended_count,SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) cancelled_count,SUM(CASE WHEN status='no_show' THEN 1 ELSE 0 END) no_show_count FROM match_attendance WHERE user_id=?").get(userId)
- db.prepare("INSERT INTO user_reliability(user_id,attended_count,cancelled_count,no_show_count) VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET attended_count=excluded.attended_count,cancelled_count=excluded.cancelled_count,no_show_count=excluded.no_show_count,updated_at=CURRENT_TIMESTAMP").run(userId,Number(row.attended_count||0),Number(row.cancelled_count||0),Number(row.no_show_count||0))
+ const attended=Number(row.attended_count||0),cancelled=Number(row.cancelled_count||0),noShow=Number(row.no_show_count||0)
+ const score=Math.max(0,Math.min(100,100-(cancelled*5)-(noShow*20)))
+ db.prepare("INSERT INTO user_reliability(user_id,attended_count,cancelled_count,no_show_count,reliability_score) VALUES(?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET attended_count=excluded.attended_count,cancelled_count=excluded.cancelled_count,no_show_count=excluded.no_show_count,reliability_score=excluded.reliability_score,updated_at=CURRENT_TIMESTAMP").run(userId,attended,cancelled,noShow,score)
+ return {attended_count:attended,cancelled_count:cancelled,no_show_count:noShow,reliability_score:score}
+}
+const getReliability = (userId) => {
+ const current=syncReliability(userId)
+ const trust=current.reliability_score>=90?'ยอดเยี่ยม':current.reliability_score>=70?'ดี':current.reliability_score>=50?'ควรระวัง':'ความน่าเชื่อถือต่ำ'
+ return {...current,trust_level:trust}
 }
 app.get('/api/matches/:id/players', auth, (req,res) => {
  const m=db.prepare('SELECT id,creator_id,max_players,open_for_join FROM matches WHERE id=?').get(req.params.id)
@@ -406,12 +414,14 @@ app.delete('/api/matches/:id/players/:userId', auth, (req,res) => {
  res.json({ok:true})
 })
 
+app.get('/api/me/reliability', auth, (req,res) => res.json(getReliability(req.user.id)))
 app.get('/api/matches/:id/reliability', auth, (req,res) => {
  const m=db.prepare('SELECT id,creator_id,match_date,start_time,end_time FROM matches WHERE id=?').get(req.params.id)
  if(!m)return res.status(404).json({error:'ไม่พบข้อมูลนัด'})
  syncAttendance(m.id)
- const rows=db.prepare("SELECT mp.user_id,u.name,ma.status attendance_status,ur.attended_count,ur.cancelled_count,ur.no_show_count FROM match_players mp JOIN users u ON u.id=mp.user_id LEFT JOIN match_attendance ma ON ma.match_id=mp.match_id AND ma.user_id=mp.user_id LEFT JOIN user_reliability ur ON ur.user_id=mp.user_id WHERE mp.match_id=? ORDER BY mp.user_id").all(m.id)
- rows.forEach(x=>syncReliability(x.user_id))
+ const ids=db.prepare('SELECT DISTINCT user_id FROM match_players WHERE match_id=? UNION SELECT DISTINCT user_id FROM match_attendance WHERE match_id=?').all(m.id,m.id)
+ ids.forEach(x=>syncReliability(x.user_id))
+ const rows=db.prepare("SELECT ma.user_id,u.name,ma.status attendance_status,ur.attended_count,ur.cancelled_count,ur.no_show_count,ur.reliability_score FROM match_attendance ma JOIN users u ON u.id=ma.user_id LEFT JOIN user_reliability ur ON ur.user_id=ma.user_id WHERE ma.match_id=? ORDER BY ma.user_id").all(m.id)
  res.json({match:m,players:rows})
 })
 app.post('/api/matches/:id/check-in/:userId', auth, (req,res) => {

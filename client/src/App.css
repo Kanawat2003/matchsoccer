@@ -179,6 +179,7 @@ body{font-weight:500;letter-spacing:.01em;-webkit-font-smoothing:antialiased}
 .booking-content p{color:#53665a;font-weight:500}
 .search input{font-weight:550;color:#263a2d}.search input::placeholder{color:#64766a;opacity:1}
 .search button,.confirm,.auth-submit,.primary,.login{font-weight:800}
+.reliability-card{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:18px}.reliability-card h2{margin:2px 0 0;font-size:30px;color:#d5ff7b}.reliability-card p{margin:3px 0 0}.reliability-stats{display:flex;flex-wrap:wrap;gap:8px}.reliability-stats span{padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.08);color:#c9d6ce}.reliability-stats b{color:#fff;margin-left:3px}@media(max-width:600px){.reliability-card{align-items:flex-start;flex-direction:column}.reliability-stats{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}.reliability-stats span{text-align:center;padding:8px 5px;font-size:11px}}
 
 /* PorsBall reference UI v4 — match the supplied screens */
 :root{--ref-bg:#10271b;--ref-bg-2:#17392a;--ref-panel:#1b3b2b;--ref-panel-2:#214634;--ref-lime:#b9f34f;--ref-white:#f5f8f3;--ref-muted:#b7c7bc;--ref-border:rgba(255,255,255,.11)}
