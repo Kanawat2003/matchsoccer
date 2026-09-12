@@ -120,6 +120,7 @@ try { db.exec("CREATE TABLE IF NOT EXISTS venue_reviews (id INTEGER PRIMARY KEY 
 try { db.exec("CREATE INDEX IF NOT EXISTS idx_venues_review_status ON venues(review_status,submitted_at)") } catch {}
 try { db.exec("CREATE INDEX IF NOT EXISTS idx_venue_reviews_venue ON venue_reviews(venue_id,created_at)") } catch {}
 
+try { db.exec("CREATE TABLE IF NOT EXISTS audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT,actor_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,action TEXT NOT NULL,entity_type TEXT NOT NULL,entity_id INTEGER,metadata TEXT NOT NULL DEFAULT '{}',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP); CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type,entity_id,created_at); CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON audit_logs(actor_user_id,created_at);") } catch {}
 // Facility/field model: one owner can manage a venue location with many playable fields.
 try { db.exec(`CREATE TABLE IF NOT EXISTS facilities (id INTEGER PRIMARY KEY AUTOINCREMENT,owner_id INTEGER NOT NULL REFERENCES users(id),name TEXT NOT NULL,address TEXT NOT NULL,phone TEXT NOT NULL DEFAULT '',description TEXT NOT NULL DEFAULT '',image TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`) } catch {}
 try { db.exec('ALTER TABLE venues ADD COLUMN facility_id INTEGER REFERENCES facilities(id)') } catch {}

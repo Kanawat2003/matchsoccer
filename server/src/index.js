@@ -42,6 +42,7 @@ const notify = (userId,type,title,message) => {
  return db.prepare('INSERT INTO notifications(user_id,type,title,message) VALUES(?,?,?,?)').run(userId,type,safeTitle,safeMessage)
 }
 
+const audit = (actorUserId, action, entityType, entityId=null, metadata={}) => { try { db.prepare('INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)').run(actorUserId||null,String(action),String(entityType),entityId==null?null:Number(entityId),JSON.stringify(metadata||{})) } catch {} }
 const bangkokDate = () => new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date())
 const validDate = (date) => /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(new Date(`${date}T00:00:00+07:00`).getTime()) && new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date(`${date}T00:00:00+07:00`))===date
 const bookingState = (date,start,end) => { const now=new Date(); const from=new Date(`${date}T${start}:00+07:00`); const to=new Date(`${date}T${end}:00+07:00`); return now>=to?'EXPIRED':now>=from?'IN_PROGRESS':'UPCOMING' }
@@ -99,6 +100,7 @@ app.get('/api/venues/:id', (req,res) => {
  if (!venue) return res.status(404).json({error:'ไม่พบสนาม'})
  res.json(venue)
 })
+app.get('/api/admin/audit-logs', auth, (req,res) => { if(req.user.role!=='admin') return res.status(403).json({error:'Forbidden'}); const limit=Math.min(100,Math.max(1,Number(req.query.limit)||50)); const rows=db.prepare('SELECT al.*,u.name actor_name,u.email actor_email FROM audit_logs al LEFT JOIN users u ON u.id=al.actor_user_id ORDER BY al.id DESC LIMIT ?').all(limit); res.json(rows) })
 app.get('/api/admin/users', auth, (req,res) => {
  if (req.user.role !== 'admin') return res.status(403).json({error:'เน€เธเธเธฒเธฐเธเธนเนเธ”เธนเนเธฅเธฃเธฐเธเธเน€เธ—เนเธฒเธเธฑเนเธ'})
  const rows=db.prepare('SELECT id,name,email,role,points,wins,losses,created_at FROM users ORDER BY id DESC').all()
@@ -265,6 +267,7 @@ app.post('/api/bookings', auth, (req,res) => {
     const u=db.prepare('SELECT name FROM users WHERE id=?').get(req.user.id)
     notify(Number(venue.owner_id),'booking','เน€เธเธเน€เธเธ•เน€เธยเน€เธเธ’เน€เธเธเน€เธหเน€เธเธเน€เธโ€กเน€เธเธเน€เธโขเน€เธเธ’เน€เธเธเน€เธฦ’เน€เธเธเน€เธเธเน€เธห',`${u?.name||'เน€เธล“เน€เธเธเน€เธโ€ฐเน€เธโฌเน€เธเธ…เน€เธหเน€เธโข'} เน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธเธ’เน€เธเธ ${bookingDate} ${startTime}-${endTime}`)
    }
+   audit(req.user.id,'booking.reclaim','booking',cancelled.id,{venue_id:Number(venueId),booking_date:bookingDate,start_time:startTime,end_time:endTime})
    return res.status(201).json(db.prepare('SELECT * FROM bookings WHERE id=?').get(cancelled.id))
   }
   const insertBooking = db.transaction(() => {
@@ -274,6 +277,7 @@ app.post('/api/bookings', auth, (req,res) => {
    return result.lastInsertRowid
   })
   const bookingId = insertBooking()
+  audit(req.user.id,'booking.create','booking',bookingId,{venue_id:Number(venueId),booking_date:bookingDate,start_time:startTime,end_time:endTime})
   if (venue.owner_id && Number(venue.owner_id)!==req.user.id) {
    const u=db.prepare('SELECT name FROM users WHERE id=?').get(req.user.id)
    notify(Number(venue.owner_id),'booking','เน€เธเธเน€เธเธ•เน€เธยเน€เธเธ’เน€เธเธเน€เธหเน€เธเธเน€เธโ€กเน€เธเธเน€เธโขเน€เธเธ’เน€เธเธเน€เธฦ’เน€เธเธเน€เธเธเน€เธห',`${u?.name||'เน€เธล“เน€เธเธเน€เธโ€ฐเน€เธโฌเน€เธเธ…เน€เธหเน€เธโข'} เน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธเธ’เน€เธเธ ${bookingDate} ${startTime}-${endTime}`)
@@ -290,7 +294,7 @@ app.get('/api/owner/bookings', auth, (req,res) => {
  const now=Date.now()
  res.json(rows.map(b=>{const start=new Date(b.booking_date+'T'+b.start_time+':00+07:00').getTime();const end=new Date(b.booking_date+'T'+b.end_time+':00+07:00').getTime();const state=String(b.status).toUpperCase()==='CANCELLED'?'CANCELLED':now<start?'UPCOMING':now<end?'IN_PROGRESS':'COMPLETED';return {...b,state}}))
 })
-app.post('/api/bookings/:id/cancel', auth, (req,res) => { const b=db.prepare("SELECT b.*,v.name venue_name,v.owner_id FROM bookings b JOIN venues v ON v.id=b.venue_id WHERE b.id=? AND b.user_id=? AND b.status='confirmed'").get(req.params.id,req.user.id); if(!b)return res.status(404).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'}); const now=new Date(),start=new Date(`${b.booking_date}T${b.start_time}:00+07:00`),end=new Date(`${b.booking_date}T${b.end_time}:00+07:00`); if(now>=start)return res.status(409).json({error:now>=end?'เน€เธโฌเน€เธเธ…เน€เธเธเน€เธโฌเน€เธเธเน€เธเธ…เน€เธเธ’เน€เธหเน€เธเธเน€เธโ€กเน€เธยเน€เธเธ…เน€เธโ€ฐเน€เธเธ เน€เธ"เน€เธเธเน€เธหเน€เธเธเน€เธเธ’เน€เธเธเน€เธเธ’เน€เธเธเน€เธโ€“เน€เธเธเน€เธยเน€เธโฌเน€เธเธ…เน€เธเธ”เน€เธยเน€เธ"เน€เธ"เน€เธโ€ฐ':'เน€เธเธเน€เธโขเน€เธเธ’เน€เธเธเน€เธยเน€เธเธ“เน€เธเธ…เน€เธเธ‘เน€เธโ€กเน€เธฦ’เน€เธล เน€เธโ€ฐเน€เธโ€กเน€เธเธ’เน€เธโขเน€เธเธเน€เธเธเน€เธเธเน€เธห เน€เธ"เน€เธเธเน€เธหเน€เธเธเน€เธเธ’เน€เธเธเน€เธเธ’เน€เธเธเน€เธโ€“เน€เธเธเน€เธยเน€เธโฌเน€เธเธ…เน€เธเธ”เน€เธยเน€เธยเน€เธเธ’เน€เธเธเน€เธหเน€เธเธเน€เธโ€กเน€เธ"เน€เธ"เน€เธโ€ฐ'}); db.prepare("UPDATE bookings SET status='cancelled' WHERE id=?").run(b.id); const members=db.prepare('SELECT user_id FROM match_players mp JOIN matches m ON m.id=mp.match_id WHERE m.booking_id=? AND mp.user_id<>?').all(b.id,b.user_id); db.prepare('UPDATE matches SET open_for_join=0 WHERE booking_id=?').run(b.id); db.prepare("UPDATE split_bills SET status='closed' WHERE booking_id=? AND status='open'").run(b.id); members.forEach(x=>notify(x.user_id,'cancel','เน€เธโขเน€เธเธ‘เน€เธ"เน€เธโ€“เน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธโฌเน€เธเธ…เน€เธเธ”เน€เธย',`เน€เธยเน€เธเธ‘เน€เธโ€เน€เธยเน€เธเธเน€เธยเน€เธยเน€เธเธเน€เธโ€ ${b.booking_date} ${b.start_time} เน€เธโ€“เน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธโฌเน€เธเธ…เน€เธเธ”เน€เธย`)); if(b.owner_id && Number(b.owner_id)!==req.user.id) notify(Number(b.owner_id),'cancel','เน€เธยเน€เธเธ’เน€เธเธเน€เธหเน€เธเธเน€เธโ€กเน€เธโ€“เน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธโฌเน€เธเธ…เน€เธเธ”เน€เธย',`เน€เธยเน€เธเธ’เน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธเธ’เน€เธเธ ${b.venue_name} เน€เธเธเน€เธเธ‘เน€เธยเน€เธโ€”เน€เธเธ•เน€เธย ${b.booking_date} เน€เธโฌเน€เธเธเน€เธเธ…เน€เธเธ’ ${b.start_time}-${b.end_time} เน€เธโ€“เน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธโฌเน€เธเธ…เน€เธเธ”เน€เธย`); res.json({ok:true}) })
+app.post('/api/bookings/:id/cancel', auth, (req,res) => { const b=db.prepare("SELECT b.*,v.name venue_name,v.owner_id FROM bookings b JOIN venues v ON v.id=b.venue_id WHERE b.id=? AND b.user_id=? AND b.status='confirmed'").get(req.params.id,req.user.id); if(!b)return res.status(404).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'}); const now=new Date(),start=new Date(`${b.booking_date}T${b.start_time}:00+07:00`),end=new Date(`${b.booking_date}T${b.end_time}:00+07:00`); if(now>=start)return res.status(409).json({error:now>=end?'เน€เธโฌเน€เธเธ…เน€เธเธเน€เธโฌเน€เธเธเน€เธเธ…เน€เธเธ’เน€เธหเน€เธเธเน€เธโ€กเน€เธยเน€เธเธ…เน€เธโ€ฐเน€เธเธ เน€เธ"เน€เธเธเน€เธหเน€เธเธเน€เธเธ’เน€เธเธเน€เธเธ’เน€เธเธเน€เธโ€“เน€เธเธเน€เธยเน€เธโฌเน€เธเธ…เน€เธเธ”เน€เธยเน€เธ"เน€เธ"เน€เธโ€ฐ':'เน€เธเธเน€เธโขเน€เธเธ’เน€เธเธเน€เธยเน€เธเธ“เน€เธเธ…เน€เธเธ‘เน€เธโ€กเน€เธฦ’เน€เธล เน€เธโ€ฐเน€เธโ€กเน€เธเธ’เน€เธโขเน€เธเธเน€เธเธเน€เธเธเน€เธห เน€เธ"เน€เธเธเน€เธหเน€เธเธเน€เธเธ’เน€เธเธเน€เธเธ’เน€เธเธเน€เธโ€“เน€เธเธเน€เธยเน€เธโฌเน€เธเธ…เน€เธเธ”เน€เธยเน€เธยเน€เธเธ’เน€เธเธเน€เธหเน€เธเธเน€เธโ€กเน€เธ"เน€เธ"เน€เธโ€ฐ'}); db.prepare("UPDATE bookings SET status='cancelled' WHERE id=?").run(b.id); audit(req.user.id,'booking.cancel','booking',b.id,{venue_id:b.venue_id,booking_date:b.booking_date,start_time:b.start_time}); const members=db.prepare('SELECT user_id FROM match_players mp JOIN matches m ON m.id=mp.match_id WHERE m.booking_id=? AND mp.user_id<>?').all(b.id,b.user_id); db.prepare('UPDATE matches SET open_for_join=0 WHERE booking_id=?').run(b.id); db.prepare("UPDATE split_bills SET status='closed' WHERE booking_id=? AND status='open'").run(b.id); members.forEach(x=>notify(x.user_id,'cancel','เน€เธโขเน€เธเธ‘เน€เธ"เน€เธโ€“เน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธโฌเน€เธเธ…เน€เธเธ”เน€เธย',`เน€เธยเน€เธเธ‘เน€เธโ€เน€เธยเน€เธเธเน€เธยเน€เธยเน€เธเธเน€เธโ€ ${b.booking_date} ${b.start_time} เน€เธโ€“เน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธโฌเน€เธเธ…เน€เธเธ”เน€เธย`)); if(b.owner_id && Number(b.owner_id)!==req.user.id) notify(Number(b.owner_id),'cancel','เน€เธยเน€เธเธ’เน€เธเธเน€เธหเน€เธเธเน€เธโ€กเน€เธโ€“เน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธโฌเน€เธเธ…เน€เธเธ”เน€เธย',`เน€เธยเน€เธเธ’เน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธเธ’เน€เธเธ ${b.venue_name} เน€เธเธเน€เธเธ‘เน€เธยเน€เธโ€”เน€เธเธ•เน€เธย ${b.booking_date} เน€เธโฌเน€เธเธเน€เธเธ…เน€เธเธ’ ${b.start_time}-${b.end_time} เน€เธโ€“เน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธโฌเน€เธเธ…เน€เธเธ”เน€เธย`); res.json({ok:true}) })
 app.get('/api/matches', (req,res) => {
  const rows = db.prepare(`SELECT m.*,v.name venue_name,b.end_time,(SELECT COUNT(*) FROM match_players mp WHERE mp.match_id=m.id) players FROM matches m JOIN venues v ON v.id=m.venue_id LEFT JOIN bookings b ON b.id=m.booking_id WHERE m.open_for_join=1 AND (b.status='confirmed') AND NOT EXISTS (SELECT 1 FROM split_bills sb WHERE sb.booking_id=m.booking_id AND sb.status='closed') ORDER BY m.match_date,m.start_time`).all()
  const visible = rows.filter(r => bookingState(r.match_date,r.start_time,r.end_time) !== 'EXPIRED')
@@ -310,7 +314,7 @@ app.post('/api/matches', auth, (req,res) => {
  const existingMatch=db.prepare('SELECT * FROM matches WHERE booking_id=? ORDER BY id DESC LIMIT 1').get(booking.id)
  if(existingMatch) return res.status(409).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
  const result=db.prepare('INSERT INTO matches(creator_id,venue_id,title,match_date,start_time,end_time,fee,max_players,booking_id,open_for_join) VALUES(?,?,?,?,?,?,?,?,?,1)').run(req.user.id,booking.venue_id,title.trim(),booking.booking_date,booking.start_time,booking.end_time,matchFee,max,booking.id)
- db.prepare('INSERT INTO match_players(match_id,user_id) VALUES(?,?)').run(result.lastInsertRowid,req.user.id)
+ db.prepare('INSERT INTO match_players(match_id,user_id) VALUES(?,?)').run(result.lastInsertRowid,req.user.id); audit(req.user.id,'match.create','match',Number(result.lastInsertRowid),{booking_id:Number(booking.id),max_players:max})
  res.status(201).json(db.prepare('SELECT * FROM matches WHERE id=?').get(result.lastInsertRowid))
 })
 app.post('/api/matches/:id/open', auth, (req,res) => {
@@ -328,7 +332,7 @@ app.post('/api/matches/:id/close', auth, (req,res) => {
  if(!m) return res.status(404).json({error:'เนเธกเนเธเธเธเนเธญเธกเธนเธฅเธเธฑเธ”เธเธญเธเธเธธเธ“'})
  if(m.booking_status!=='confirmed') return res.status(409).json({error:'เธเธฒเธฃเธเธญเธเธชเธเธฒเธกเธ–เธนเธเธขเธเน€เธฅเธดเธเนเธฅเนเธง'})
  if(bookingState(m.match_date,m.start_time,m.end_time)!=='UPCOMING') return res.status(409).json({error:'เธเธฑเธ”เธเธตเนเน€เธฃเธดเนเธกเธซเธฃเธทเธญเธซเธกเธ”เน€เธงเธฅเธฒเนเธฅเนเธง'})
- db.prepare('UPDATE matches SET open_for_join=0 WHERE id=?').run(m.id)
+ db.prepare('UPDATE matches SET open_for_join=0 WHERE id=?').run(m.id); audit(req.user.id,'match.close','match',m.id,{booking_id:m.booking_id})
  const players=db.prepare('SELECT user_id FROM match_players WHERE match_id=? AND user_id<>?').all(m.id,m.creator_id)
  players.forEach(x=>notify(x.user_id,'match_close','เน€เธโฌเน€เธหเน€เธโ€ฐเน€เธเธ’เน€เธ\\\'เน€เธเธเน€เธโ€กเน€เธโขเน€เธเธ‘เน€เธ"เน€เธโ€บเน€เธเธ”เน€เธ"เน€เธเธเน€เธเธ‘เน€เธลกเน€เธ"เน€เธโข',`เน€เธยเน€เธเธ‘เน€เธโ€ ${m.title} เน€เธยเน€เธเธ”เน€เธโ€เน€เธเธเน€เธเธ‘เน€เธยเน€เธยเน€เธเธเน€เธยเน€เธโฌเน€เธเธ…เน€เธยเน€เธยเน€เธโฌเน€เธยเน€เธเธ”เน€เธยเน€เธเธเน€เธโฌเน€เธโ€ขเน€เธเธ”เน€เธเธเน€เธยเน€เธเธ…เน€เธยเน€เธเธ`))
  res.json({ok:true})
@@ -399,6 +403,7 @@ app.post('/api/matches/:id/leave', auth, (req,res) => {
  db.prepare("UPDATE match_attendance SET status='cancelled',updated_at=CURRENT_TIMESTAMP WHERE match_id=? AND user_id=?").run(m.id,req.user.id)
  const result=db.prepare('DELETE FROM match_players WHERE match_id=? AND user_id=?').run(m.id,req.user.id)
  if(!result.changes) return res.status(409).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
+ audit(req.user.id,'match.leave','match',m.id,{user_id:req.user.id})
  const u=db.prepare('SELECT name FROM users WHERE id=?').get(req.user.id); notify(m.creator_id,'leave','เน€เธเธเน€เธเธ•เน€เธ"เน€เธโขเน€เธเธเน€เธเธเน€เธยเน€เธหเน€เธเธ’เน€เธยเน€เธโขเน€เธเธ‘เน€เธ"',`${u?.name||'เน€เธล“เน€เธเธเน€เธโ€ฐเน€เธโฌเน€เธเธ…เน€เธหเน€เธโข'} เน€เธเธเน€เธเธเน€เธยเน€เธยเน€เธเธ’เน€เธยเน€เธยเน€เธเธ‘เน€เธโ€ ${m.title}`)
  res.json({ok:true})
 })
@@ -438,6 +443,7 @@ app.post('/api/matches/:id/check-in/:userId', auth, (req,res) => {
  if(now<openAt||now>closeAt)return res.status(409).json({error:'ยังไม่ถึงช่วงเวลาสำหรับเช็กชื่อ'})
  syncAttendance(m.id)
  db.prepare("UPDATE match_attendance SET status='attended',checked_in_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE match_id=? AND user_id=?").run(m.id,req.params.userId)
+ audit(req.user.id,'match.check_in','match',m.id,{user_id:Number(req.params.userId)})
  syncReliability(Number(req.params.userId))
  res.json({ok:true})
 })
@@ -479,6 +485,7 @@ app.post('/api/split-bills', auth, (req,res) => {
   return res.json({id:existing.id,shareAmount:share,shareCount:count,totalAmount:booking.total_price})
  }
  const result=db.prepare('INSERT INTO split_bills(booking_id,owner_user_id,total_amount,share_count,share_amount) VALUES(?,?,?,?,?)').run(booking.id,req.user.id,booking.total_price,count,share)
+ audit(req.user.id,'split_bill.create','split_bill',Number(result.lastInsertRowid),{booking_id:Number(booking.id),share_count:count,total_amount:booking.total_price})
  const add=db.prepare('INSERT INTO split_bill_members(split_bill_id,name,amount) VALUES(?,?,?)')
  for(let i=0;i<count;i++) add.run(result.lastInsertRowid,names[i]||('เน€เธโฌเน€เธลพเน€เธเธ—เน€เธหเน€เธเธเน€เธโขเน€เธ"เน€เธโขเน€เธโ€”เน€เธเธ•เน€เธห '+(i+1)),baseShare+(i<remainder?1:0))
  res.status(201).json({id:result.lastInsertRowid,shareAmount:share,shareCount:count,totalAmount:booking.total_price})
@@ -510,7 +517,7 @@ app.post('/api/split-bills/share/:token/pay', (req,res) => {
  const row=db.prepare("SELECT sb.id bill_id,sbm.id member_id,sbm.paid,sb.status FROM split_bill_members sbm JOIN split_bills sb ON sb.id=sbm.split_bill_id WHERE sbm.member_token_hash=?").get(hashMemberToken(token))
  if(!row || row.status!=='open') return res.status(404).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
  if(row.paid) return res.status(409).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
- db.prepare("UPDATE split_bill_members SET paid=1,paid_at=CURRENT_TIMESTAMP WHERE id=? AND split_bill_id=? AND paid=0").run(row.member_id,row.bill_id)
+ db.prepare("UPDATE split_bill_members SET paid=1,paid_at=CURRENT_TIMESTAMP WHERE id=? AND split_bill_id=? AND paid=0").run(row.member_id,row.bill_id); audit(null,'split_bill.pay','split_bill',row.bill_id,{member_id:row.member_id})
  res.json({ok:true,message:'เน€เธเธเน€เธเธ—เน€เธโขเน€เธเธเน€เธเธ‘เน€เธโขเน€เธยเน€เธเธ’เน€เธเธเน€เธล เน€เธเธ“เน€เธเธเน€เธเธเน€เธโฌเน€เธโ€กเน€เธเธ”เน€เธโขเน€เธยเน€เธเธ…เน€เธโ€ฐเน€เธเธ'})
 })
 app.get('/api/split-bills/:id', auth, (req,res) => {
@@ -533,7 +540,7 @@ app.post('/api/split-bills/:id/close', auth, (req,res) => {
  if(!bill) return res.status(404).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'})
  const unpaid=db.prepare('SELECT COUNT(*) n FROM split_bill_members WHERE split_bill_id=? AND paid=0').get(bill.id).n
  if(unpaid>0) return res.status(409).json({error:'เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”'+unpaid+' เน€เธ"เน€เธโข'})
- db.prepare("UPDATE split_bills SET status='closed' WHERE id=?").run(bill.id)
+ db.prepare("UPDATE split_bills SET status='closed' WHERE id=?").run(bill.id); audit(req.user.id,'split_bill.close','split_bill',bill.id,{booking_id:bill.booking_id})
  db.prepare('UPDATE matches SET open_for_join=0 WHERE booking_id=?').run(bill.booking_id)
  res.json({ok:true,message:'เธเธดเธ”เธเธดเธฅเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง'})
 })
@@ -605,6 +612,7 @@ app.patch('/api/admin/venues/:id/review', auth, (req,res)=>{
  if(!venue) return res.status(404).json({error:'ไม่พบสนาม'})
  const map={approve:'approved',request_changes:'changes_requested',reject:'rejected'};const status=map[action]
  db.prepare('UPDATE venues SET review_status=?,review_note=?,reviewed_at=CURRENT_TIMESTAMP,reviewed_by=? WHERE id=?').run(status,note,req.user.id,venue.id)
+ audit(req.user.id,'venue.review','venue',venue.id,{decision:action,note:note.slice(0,300)})
  db.prepare('INSERT INTO venue_reviews(venue_id,actor_user_id,action,note) VALUES(?,?,?,?)').run(venue.id,req.user.id,action,note)
  const title=action==='approve'?'เธชเธเธฒเธกเนเธ”เนเธฃเธฑเธเธเธฒเธฃเธญเธเธธเธกเธฑเธ•เธด':action==='request_changes'?'เธเธฃเธธเธ“เธฒเนเธเนเนเธเธเนเธญเธกเธนเธฅเธชเธเธฒเธก':'เธเธณเธเธญเน€เธเธดเนเธกเธชเธเธฒเธกเนเธกเนเธเนเธฒเธเธเธฒเธฃเธญเธเธธเธกเธฑเธ•เธด'
  const msg=note?`${venue.name}: ${note}`:`${venue.name} เธเธฃเนเธญเธกเน€เธเธดเธ”เนเธซเนเธฅเธนเธเธเนเธฒเธเธญเธเนเธฅเนเธง`
