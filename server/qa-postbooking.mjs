@@ -2,7 +2,7 @@
 const base='http://127.0.0.1:4001/api'
 const stamp=Date.now()
 const req=async(p,o={})=>{const r=await fetch(base+p,{...o,headers:{'Content-Type':'application/json',...(o.token?{Authorization:'Bearer '+o.token}:{})}});const t=await r.text();let d;try{d=JSON.parse(t)}catch{throw Error(p+' non-json '+r.status)};if(r.status<200||r.status>=300)throw Error(p+' '+r.status+' '+JSON.stringify(d));return d}
-const reg=async(n)=>req('/auth/register',{method:'POST',body:JSON.stringify({name:n+' '+stamp,email:n.toLowerCase().replace(/\s+/g,'')+stamp+'@porsball.test',password:'TestPass123!',phone:'0812345678',address:'QA'})})
+const reg=async(n)=>req('/auth/register',{method:'POST',body:JSON.stringify({name:n+' '+stamp,email:n.toLowerCase().replace(/\s+/g,'')+stamp+'@porsball.test',password:'TestPass123!',phone:'0812345678',address:'QA',birthDate:'2000-01-15'})})
 let owner,admin,player,F,V,b,m,bill,links
 try {
  owner=await reg('QA Owner2'); admin=await reg('QA Admin2'); player=await reg('QA Player2')

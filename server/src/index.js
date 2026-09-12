@@ -371,6 +371,8 @@ const syncAttendance = (matchId) => {
  }
 }
 const syncReliability = (userId) => {
+ const pendingMatches=db.prepare("SELECT match_id FROM match_attendance WHERE user_id=? AND status='pending'").all(userId)
+ pendingMatches.forEach(x=>syncAttendance(x.match_id))
  const row=db.prepare("SELECT SUM(CASE WHEN status='attended' THEN 1 ELSE 0 END) attended_count,SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) cancelled_count,SUM(CASE WHEN status='no_show' THEN 1 ELSE 0 END) no_show_count FROM match_attendance WHERE user_id=?").get(userId)
  const attended=Number(row.attended_count||0),cancelled=Number(row.cancelled_count||0),noShow=Number(row.no_show_count||0)
  const score=Math.max(0,Math.min(100,100-(cancelled*5)-(noShow*20)))

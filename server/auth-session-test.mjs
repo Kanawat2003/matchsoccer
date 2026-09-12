@@ -2,7 +2,7 @@ const base='http://127.0.0.1:4001/api'
 const email=`auth_session_${Date.now()}@test.local`
 const post=async(path,body,token)=>{const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})},body:JSON.stringify(body)});const j=await r.json();return {status:r.status,j}}
 const getMe=async(token)=>{const r=await fetch(base+'/me',{headers:{Authorization:`Bearer ${token}`}});return {status:r.status,j:await r.json()}}
-const reg=await post('/auth/register',{name:'Session Audit',email,password:'OldPass123!'})
+const reg=await post('/auth/register',{name:'Session Audit',email,password:'OldPass123!',phone:'0812345678',address:'QA',birthDate:'2000-01-15'})
 if(reg.status!==201)throw new Error('register failed')
 const oldToken=reg.j.token
 if((await getMe(oldToken)).status!==200)throw new Error('old token should work before reset')
