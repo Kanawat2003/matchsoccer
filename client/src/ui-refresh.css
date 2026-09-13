@@ -29,3 +29,5 @@
 .field-help{display:block;margin-top:5px;font-size:12px;opacity:.75}
 
 .age-filter{display:grid;gap:10px;margin:16px 0}.age-filter>div:first-child{display:flex;flex-direction:column;gap:3px}.age-filter small{opacity:.78}.age-filter .chips{margin:0;display:flex;flex-wrap:wrap;gap:8px}.age-filter .chips button{min-height:40px}@media(max-width:600px){.age-filter{padding:14px}.age-filter .chips{gap:6px}.age-filter .chips button{min-height:44px;padding:8px 12px}}
+
+.match-age-summary{margin-top:6px;font-size:12px;font-weight:700;color:var(--ref-lime);line-height:1.5}.match-age-summary.muted{opacity:.65;font-weight:500}@media(max-width:600px){.match-age-summary{font-size:11px}}
