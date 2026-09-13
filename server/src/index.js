@@ -218,13 +218,17 @@ app.get('/api/me', auth, (req,res) => {
  res.json({...user,age:user.birth_date?calcAge(user.birth_date):null})
 })
 app.patch('/api/me', auth, (req,res) => {
- const name=String(req.body.name||'').trim(), phone=String(req.body.phone||'').trim(), address=String(req.body.address||'').trim()
+ const name=String(req.body.name||'').trim(), phone=String(req.body.phone||'').trim(), address=String(req.body.address||'').trim(), birthDate=req.body.birthDate===undefined?null:String(req.body.birthDate||'').trim()
  const avatar=req.body.avatar==null||req.body.avatar===''?null:String(req.body.avatar)
  if(!name||name.length>80)return res.status(400).json({error:'กรุณากรอกชื่อให้ถูกต้อง'})
+ if(!validDate(birthDate)||birthDate>bangkokDate()||calcAge(birthDate)===null||calcAge(birthDate)<13)return res.status(400).json({error:'วันเกิดไม่ถูกต้องหรืออายุต่ำกว่า 13 ปี'})
  if(phone.length<8||phone.length>20)return res.status(400).json({error:'กรุณากรอกเบอร์โทรให้ถูกต้อง'})
  if(!address||address.length>300)return res.status(400).json({error:'กรุณากรอกที่อยู่ให้ถูกต้อง'})
+ if(req.body.birthDate!==undefined && (!birthDate||!validDate(birthDate)||birthDate>bangkokDate()||calcAge(birthDate)===null))return res.status(400).json({error:'วันเกิดไม่ถูกต้อง'})
+ if(req.body.birthDate!==undefined && calcAge(birthDate)<13)return res.status(400).json({error:'ผู้ใช้งานต้องมีอายุอย่างน้อย 13 ปี'})
  if(avatar && (!/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/i.test(avatar)||avatar.length>180000)) return res.status(400).json({error:'รูปโปรไฟล์ไม่ถูกต้องหรือมีขนาดใหญ่เกินไป'})
- db.prepare('UPDATE users SET name=?,phone=?,address=?,avatar=? WHERE id=?').run(name,phone,address,avatar,req.user.id)
+ if(req.body.birthDate!==undefined) db.prepare('UPDATE users SET name=?,phone=?,address=?,avatar=?,birth_date=? WHERE id=?').run(name,phone,address,avatar,birthDate,req.user.id)
+ else db.prepare('UPDATE users SET name=?,phone=?,address=?,birth_date=?,avatar=? WHERE id=?').run(name,phone,address,birthDate,avatar,req.user.id)
  const user=db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar,birth_date FROM users WHERE id=?').get(req.user.id)
  res.json({...user,age:user.birth_date?calcAge(user.birth_date):null})
 })
@@ -311,7 +315,7 @@ app.post('/api/bookings/:id/cancel', auth, (req,res) => {
 })
 
 app.get('/api/matches', (req,res) => {
- const rows = db.prepare(`SELECT m.*,v.name venue_name,b.end_time,(SELECT COUNT(*) FROM match_players mp WHERE mp.match_id=m.id) players FROM matches m JOIN venues v ON v.id=m.venue_id LEFT JOIN bookings b ON b.id=m.booking_id WHERE m.open_for_join=1 AND (b.status='confirmed') AND NOT EXISTS (SELECT 1 FROM split_bills sb WHERE sb.booking_id=m.booking_id AND sb.status='closed') ORDER BY m.match_date,m.start_time`).all()
+ const rows = db.prepare(`SELECT m.*,v.name venue_name,b.end_time,(SELECT COUNT(*) FROM match_players mp WHERE mp.match_id=m.id) players,(SELECT COUNT(*) FROM match_players mp JOIN users u ON u.id=mp.user_id WHERE mp.match_id=m.id AND u.birth_date IS NOT NULL AND CAST((julianday(date('now','+7 hours'))-julianday(u.birth_date))/365.2425 AS INTEGER) BETWEEN 13 AND 15) age_13_15,(SELECT COUNT(*) FROM match_players mp JOIN users u ON u.id=mp.user_id WHERE mp.match_id=m.id AND u.birth_date IS NOT NULL AND CAST((julianday(date('now','+7 hours'))-julianday(u.birth_date))/365.2425 AS INTEGER) BETWEEN 16 AND 18) age_16_18,(SELECT COUNT(*) FROM match_players mp JOIN users u ON u.id=mp.user_id WHERE mp.match_id=m.id AND u.birth_date IS NOT NULL AND CAST((julianday(date('now','+7 hours'))-julianday(u.birth_date))/365.2425 AS INTEGER) BETWEEN 19 AND 25) age_19_25,(SELECT COUNT(*) FROM match_players mp JOIN users u ON u.id=mp.user_id WHERE mp.match_id=m.id AND u.birth_date IS NOT NULL AND CAST((julianday(date('now','+7 hours'))-julianday(u.birth_date))/365.2425 AS INTEGER) >= 26) age_26_plus FROM matches m JOIN venues v ON v.id=m.venue_id LEFT JOIN bookings b ON b.id=m.booking_id WHERE m.open_for_join=1 AND (b.status='confirmed') AND NOT EXISTS (SELECT 1 FROM split_bills sb WHERE sb.booking_id=m.booking_id AND sb.status='closed') ORDER BY m.match_date,m.start_time`).all()
  const visible = rows.filter(r => bookingState(r.match_date,r.start_time,r.end_time) !== 'EXPIRED')
  res.json(visible.map(r=>({...r,state:bookingState(r.match_date,r.start_time,r.end_time)})))
 })

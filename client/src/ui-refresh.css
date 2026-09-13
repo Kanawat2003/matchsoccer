@@ -27,3 +27,5 @@
 /* Prevent long owner/admin labels from forcing horizontal scroll */
 .owner-dashboard button,.admin-page button,.owner-dashboard input,.owner-dashboard textarea,.owner-dashboard select,.admin-page select{max-width:100%}
 .field-help{display:block;margin-top:5px;font-size:12px;opacity:.75}
+
+.age-filter{display:grid;gap:10px;margin:16px 0}.age-filter>div:first-child{display:flex;flex-direction:column;gap:3px}.age-filter small{opacity:.78}.age-filter .chips{margin:0;display:flex;flex-wrap:wrap;gap:8px}.age-filter .chips button{min-height:40px}@media(max-width:600px){.age-filter{padding:14px}.age-filter .chips{gap:6px}.age-filter .chips button{min-height:44px;padding:8px 12px}}
