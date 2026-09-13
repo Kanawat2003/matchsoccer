@@ -6,6 +6,8 @@ MatchSoccer is a football-field booking web application prototype focused on mak
 
 **[เปิดเว็บ MatchSoccer](https://porsball.onrender.com)**
 
+> หมายเหตุ: โดเมน Render เดิมยังใช้ชื่อ `porsball.onrender.com` เพื่อไม่กระทบ deployment เดิม ส่วนชื่อที่แสดงต่อผู้ใช้คือ MatchSoccer
+
 ทดลองใช้งานระบบจริงได้จากลิงก์ด้านบน
 
 ## 💻 Source Code

@@ -120,17 +120,17 @@ app.patch('/api/admin/users/:id/role', auth, (req,res) => {
 })
 
 app.get('/api/owner/venues', auth, (req,res) => {
- if (req.user.role !== 'owner' && req.user.role !== 'admin') return res.status(403).json({error:'เกิดข้อผิดพลาด'})
+ if (req.user.role !== 'owner' && req.user.role !== 'admin') return res.status(403).json({error:'คุณไม่มีสิทธิ์ดำเนินการนี้'})
  const rows = req.user.role === 'admin'
   ? db.prepare(`${publicVenueSelect} ORDER BY v.id DESC`).all()
   : db.prepare(`${publicVenueSelect} WHERE v.owner_id=? ORDER BY v.id DESC`).all(req.user.id)
  res.json(rows)
 })
 app.patch('/api/owner/venues/:id', auth, (req,res) => {
- if (req.user.role !== 'owner' && req.user.role !== 'admin') return res.status(403).json({error:'เกิดข้อผิดพลาด'})
+ if (req.user.role !== 'owner' && req.user.role !== 'admin') return res.status(403).json({error:'คุณไม่มีสิทธิ์ดำเนินการนี้'})
  const venue = db.prepare('SELECT * FROM venues WHERE id=?').get(req.params.id)
  if (!venue) return res.status(404).json({error:'ไม่พบสนาม'})
- if (req.user.role !== 'admin' && venue.owner_id !== req.user.id) return res.status(403).json({error:'เกิดข้อผิดพลาด'})
+ if (req.user.role !== 'admin' && venue.owner_id !== req.user.id) return res.status(403).json({error:'คุณไม่มีสิทธิ์ดำเนินการนี้'})
  const {name,area,address,pricePerHour,price_per_hour,roof,fieldTypes,field_types,image,serviceStatus} = req.body
  const finalPrice = Number(pricePerHour ?? price_per_hour)
  const finalFields = String(fieldTypes ?? field_types ?? '').trim()
@@ -152,9 +152,9 @@ app.post('/api/auth/register', async (req,res) => {
  const name=String(req.body.name||'').trim(), email=String(req.body.email||'').trim().toLowerCase(), password=String(req.body.password||''), phone=String(req.body.phone||'').trim(), address=String(req.body.address||'').trim(), birthDate=String(req.body.birthDate||'').trim()
  if (!name || !email || !password || !phone || !address || !birthDate) return res.status(400).json({error:'กรุณากรอกข้อมูลให้ครบ'})
  if(!validDate(birthDate)||birthDate>bangkokDate()||calcAge(birthDate)===null) return res.status(400).json({error:'วันเกิดไม่ถูกต้อง'})
- if (name.length>80) return res.status(400).json({error:'เกิดข้อผิดพลาด'})
- if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({error:'เกิดข้อผิดพลาด'})
- if (password.length<8) return res.status(400).json({error:'เกิดข้อผิดพลาด'})
+ if (name.length>80) return res.status(400).json({error:'ชื่อยาวเกินไป'})
+ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({error:'รูปแบบอีเมลไม่ถูกต้อง'})
+ if (password.length<8) return res.status(400).json({error:'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'})
  if (phone.length<8 || phone.length>20) return res.status(400).json({error:'กรุณากรอกเบอร์โทรให้ถูกต้อง'})
  if (address.length>300) return res.status(400).json({error:'ที่อยู่ยาวเกินไป'})
  try {
@@ -163,7 +163,12 @@ app.post('/api/auth/register', async (req,res) => {
   const userRow = db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar,birth_date FROM users WHERE id=?').get(info.lastInsertRowid)
   const user = {...userRow,age:userRow.birth_date?calcAge(userRow.birth_date):null}
   res.status(201).json({token:tokenFor(user),user})
- } catch { res.status(409).json({error:'เกิดข้อผิดพลาด'}) }
+ } catch (e) {
+  const duplicate=String(e?.message||'').includes('UNIQUE')
+  if(duplicate) return res.status(409).json({error:'อีเมลนี้มีบัญชีอยู่แล้ว'})
+  console.error('REGISTER_ERROR',e)
+  return res.status(500).json({error:'ไม่สามารถสมัครสมาชิกได้ กรุณาลองใหม่อีกครั้ง'})
+ }
 })
 app.post('/api/auth/login', async (req,res) => {
  const email=String(req.body.email||'').trim().toLowerCase(), password=String(req.body.password||'')
