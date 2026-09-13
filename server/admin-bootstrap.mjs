@@ -2,7 +2,7 @@ import db from './src/db.js'
 import bcrypt from 'bcryptjs'
 const email=String(process.env.ADMIN_EMAIL||'').trim().toLowerCase()
 const password=String(process.env.ADMIN_PASSWORD||'')
-const name=String(process.env.ADMIN_NAME||'PorsBall Admin').trim()
+const name=String(process.env.ADMIN_NAME||'MatchSoccer Admin').trim()
 if(!email||!password||password.length<8) throw new Error('Set ADMIN_EMAIL and ADMIN_PASSWORD (8+ chars) before running')
 const hash=await bcrypt.hash(password,10)
 const existing=db.prepare('SELECT id FROM users WHERE lower(email)=?').get(email)

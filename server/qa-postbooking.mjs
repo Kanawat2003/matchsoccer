@@ -1,4 +1,4 @@
-﻿import db from './src/db.js'
+import db from './src/db.js'
 const base='http://127.0.0.1:4001/api'
 const stamp=Date.now()
 const req=async(p,o={})=>{const r=await fetch(base+p,{...o,headers:{'Content-Type':'application/json',...(o.token?{Authorization:'Bearer '+o.token}:{})}});const t=await r.text();let d;try{d=JSON.parse(t)}catch{throw Error(p+' non-json '+r.status)};if(r.status<200||r.status>=300)throw Error(p+' '+r.status+' '+JSON.stringify(d));return d}
@@ -19,13 +19,13 @@ try {
  await req(`/matches/${m.id}/players/${owner.user.id}`,{method:'DELETE',token:player.token})
  await req(`/matches/${m.id}/join`,{method:'POST',token:owner.token}); await req(`/matches/${m.id}/close`,{method:'POST',token:player.token})
  const playerNotices=await req('/notifications',{token:player.token}); const ownerNotices=await req('/notifications',{token:owner.token}); for(const t of ['join','leave'])if(!playerNotices.some(x=>x.type===t))throw Error('missing player notification '+t); for(const t of ['remove','match_close'])if(!ownerNotices.some(x=>x.type===t))throw Error('missing owner notification '+t)
- bill=await req('/split-bills',{method:'POST',token:player.token,body:JSON.stringify({bookingId:b.id,shareCount:2,names:['เน€เธเนเธฒเธเธญเธเธเธฑเธ”','เธเธนเนเธฃเนเธงเธกเน€เธฅเนเธ']})})
+ bill=await req('/split-bills',{method:'POST',token:player.token,body:JSON.stringify({bookingId:b.id,shareCount:2,names:['เจ้าของนัด','ผู้ร่วมเล่น']})})
  links=await req(`/split-bills/${bill.id}/share-links`,{method:'POST',token:player.token}); if(links.links.length!==2)throw Error('share links failed')
  try{await req(`/split-bills/${bill.id}/close`,{method:'POST',token:player.token});throw Error('close should be blocked')}catch(e){if(!String(e).includes('409'))throw e}
  await req(`/split-bills/${bill.id}/members/${(await req(`/split-bills/${bill.id}`,{token:player.token})).members[0].id}/pay`,{method:'POST',token:player.token})
  await req(`/split-bills/${bill.id}/members/${(await req(`/split-bills/${bill.id}`,{token:player.token})).members[1].id}/pay`,{method:'POST',token:player.token})
  await req(`/split-bills/${bill.id}/close`,{method:'POST',token:player.token})
- b=await req(`/bookings/${b.id}/cancel`,{method:'POST',token:player.token})
+ const cancelSlots=await req(`/venues/${V.id}/slots?date=${date}`); const cancelSlot=cancelSlots.slots.find(x=>x.available&&x.start!==slot.start); if(!cancelSlot)throw Error('no second slot available for cancellation test'); const cancelBooking=await req('/bookings',{method:'POST',token:player.token,body:JSON.stringify({venueId:V.id,bookingDate:date,startTime:cancelSlot.start,endTime:cancelSlot.end,totalPrice:1200})}); b=await req(`/bookings/${cancelBooking.id}/cancel`,{method:'POST',token:player.token})
  const after=await req('/venues'); const v=after.find(x=>x.id===V.id); if(v?.id!==V.id)throw Error('venue unexpectedly missing')
  console.log('E2E POST-BOOKING MATCH-SPLIT-CANCEL PASS',JSON.stringify({booking:b.id,match:m.id,bill:bill.id,notifications:['join','leave','remove','match_close']}))
 } finally { console.log('POST-BOOKING DATA CREATED; run qa-cleanup.mjs') }

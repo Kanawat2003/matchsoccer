@@ -79,3 +79,6 @@ server/backfill-*.mjs
 server/cleanup-*.mjs
 server/inspect-*.mjs
 server/check-db.js
+
+# Local Chrome profile used for desktop automation
+chrome-ppt-profile/

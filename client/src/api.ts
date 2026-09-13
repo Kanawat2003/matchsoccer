@@ -1,7 +1,7 @@
 const API_ROOT=import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:4001`
 const API=API_ROOT.replace(/\/$/,'') + (API_ROOT.endsWith('/api')?'':'/api')
 async function request<T>(path:string, options:RequestInit={}):Promise<T>{
- const token=localStorage.getItem('porsball_token')
+ const token=localStorage.getItem('matchsoccer_token')||localStorage.getItem('porsball_token')
  const headers:Record<string,string>={'Content-Type':'application/json'}
  if(token) headers.Authorization=`Bearer ${token}`
  let res:Response
@@ -11,7 +11,9 @@ async function request<T>(path:string, options:RequestInit={}):Promise<T>{
  if(!res.ok){
   let msg=data.error||`เซิร์ฟเวอร์ไม่พร้อมใช้งาน (${res.status})`
   if(res.status===401){
+   localStorage.removeItem('matchsoccer_token')
    localStorage.removeItem('porsball_token')
+   window.dispatchEvent(new Event('matchsoccer:auth-expired'))
    window.dispatchEvent(new Event('porsball:auth-expired'))
    msg='เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่'
   }

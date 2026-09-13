@@ -1,16 +1,16 @@
-﻿# PorsBall ⚽
+﻿# MatchSoccer ⚽
 
-PorsBall is a football-field booking web application prototype focused on making it easy to find a field, book in real time, create matches, find teammates, and split the cost with players.
+MatchSoccer is a football-field booking web application prototype focused on making it easy to find a field, book in real time, create matches, find teammates, and split the cost with players.
 
 ## 🚀 Live Demo
 
-**[เปิดเว็บ PorsBall](https://porsball.onrender.com)**
+**[เปิดเว็บ MatchSoccer](https://porsball.onrender.com)**
 
 ทดลองใช้งานระบบจริงได้จากลิงก์ด้านบน
 
 ## 💻 Source Code
 
-**[ดู Source Code บน GitHub](https://github.com/Kanawat2003/matchsoccer.git)**
+**[ดู Source Code MatchSoccer บน GitHub](https://github.com/Kanawat2003/matchsoccer.git)**
 
 ## Highlights
 
@@ -37,7 +37,7 @@ PorsBall is a football-field booking web application prototype focused on making
 ## Project structure
 
 ```text
-porsball/
+matchsoccer/
 ├─ client/    # React + TypeScript frontend
 └─ server/    # Express API + SQLite backend
 ```
@@ -66,6 +66,6 @@ The API runs at `http://127.0.0.1:4001`.
 
 ## Project status
 
-This repository contains the current PorsBall development version and is actively being improved and tested.
+This repository contains the current MatchSoccer development version and is actively being improved and tested.
 
 > The live demo is deployed on Render. Local SQLite data, environment files, dependencies, build output, and temporary development files are intentionally excluded from Git.

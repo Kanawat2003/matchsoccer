@@ -5,7 +5,7 @@
 .admin-stats{grid-template-columns:repeat(5,minmax(0,1fr))}
 .admin-section{overflow:hidden}
 .admin-table{overflow-x:auto}
-.admin-row{min-width:620px}
+.admin-row{min-width:0}
 .admin-row select{max-width:220px}
 .admin-error{border-color:#6b3030!important}
 .admin-success{border-color:#245c3b!important;color:#8ff0b4;padding:14px 16px;margin-bottom:16px}
@@ -30,6 +30,7 @@
 .admin-page .admin-row>div{min-width:0}
 .admin-page .admin-row small{display:block;color:#8fa195;margin-top:4px;overflow-wrap:anywhere}
 .admin-page .admin-row select{min-width:0}
+.admin-page .admin-row button:focus-visible,.admin-page .admin-row select:focus-visible{outline:2px solid #b9f34f;outline-offset:2px}
 @media(max-width:800px){.admin-page .admin-row{gap:10px;padding:14px}.admin-page .admin-row>div:nth-child(2){font-size:12px;color:#aebbb2}.admin-page .admin-row select{font-size:13px;padding:9px 10px}}
 @media(max-width:500px){.admin-page .admin-stats{gap:8px}.admin-page .admin-stats>div{padding:12px}.admin-page .admin-stats b{font-size:20px}.admin-page .section-head h1{font-size:26px}.admin-page .section-head h2{font-size:19px}.admin-page .admin-row{padding:14px;gap:8px}.admin-page .admin-row>div:nth-child(2){order:2}.admin-page .admin-row select{order:3}.admin-page .admin-status{justify-self:start}.admin-booking-filters{padding-top:10px}}
 

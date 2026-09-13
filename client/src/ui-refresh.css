@@ -1,0 +1,29 @@
+/* MatchSoccer UI safety polish */
+.pitch-body,.match-card,.booking-content,.profile-head,.admin-row{min-width:0}
+.pitch-body h3,.match-card h3,.booking-content h2,.profile-head h2{overflow-wrap:anywhere}
+.close{z-index:8;min-width:40px;min-height:40px}
+@media(max-width:600px){
+  .close{right:8px;top:8px}
+  .booking{width:calc(100vw - 20px);max-height:calc(100vh - 20px)}
+  .facility-picker{width:calc(100vw - 20px)}
+  .owner-dashboard{min-width:0;overflow-x:hidden}
+  .owner-bookings{min-width:0;overflow-x:hidden}
+  .admin-page{min-width:0;overflow-x:hidden}
+}
+.admin-row,.booking-row{overflow-wrap:anywhere}
+
+.field-type-badge{display:inline-flex;align-items:center;justify-content:center;padding:4px 9px;border:1px solid rgba(185,243,79,.35);border-radius:999px;font-size:12px;font-weight:800;color:var(--ref-lime);background:rgba(185,243,79,.08)}
+.facility-field-card{position:relative;display:grid;grid-template-columns:1fr auto;gap:6px 10px;text-align:left}.facility-field-card strong,.facility-field-card span,.facility-field-card small,.facility-field-card em{min-width:0}.facility-field-card strong{grid-column:1}.facility-field-card span{grid-column:2;grid-row:1}.facility-field-card small{grid-column:1 / -1}.facility-field-card .field-type-badge{grid-column:2;grid-row:2;align-self:center}.facility-field-card .field-service-status{grid-column:1 / -1}.facility-field-card .field-type-badge+.field-service-status{grid-column:1 / -1}
+.facility-field-card .field-service-status{margin-top:2px}
+
+/* Mobile field picker — make each field easy to scan and tap */
+@media(max-width:600px){
+  .facility-field-card{min-height:72px;padding:14px 15px}
+  .facility-field-card strong{font-size:16px}
+  .facility-field-card span{font-size:14px}
+  .facility-field-card small{font-size:12px}
+}
+
+/* Prevent long owner/admin labels from forcing horizontal scroll */
+.owner-dashboard button,.admin-page button,.owner-dashboard input,.owner-dashboard textarea,.owner-dashboard select,.admin-page select{max-width:100%}
+.field-help{display:block;margin-top:5px;font-size:12px;opacity:.75}
