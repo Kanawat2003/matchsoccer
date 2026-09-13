@@ -57,6 +57,8 @@ try { db.exec('ALTER TABLE users ADD COLUMN phone TEXT') } catch {}
 try { db.exec('ALTER TABLE users ADD COLUMN address TEXT') } catch {}
 try { db.exec('ALTER TABLE users ADD COLUMN avatar TEXT') } catch {}
 try { db.exec('ALTER TABLE users ADD COLUMN birth_date TEXT') } catch {}
+try { db.exec("ALTER TABLE users ADD COLUMN position TEXT NOT NULL DEFAULT ''") } catch {}
+try { db.exec("ALTER TABLE users ADD COLUMN skill_level TEXT NOT NULL DEFAULT 'beginner'") } catch {}
 try { db.exec('ALTER TABLE matches ADD COLUMN booking_id INTEGER REFERENCES bookings(id)') } catch {}
 try { db.exec('ALTER TABLE matches ADD COLUMN open_for_join INTEGER NOT NULL DEFAULT 0') } catch {}
 try { db.exec('ALTER TABLE matches ADD COLUMN end_time TEXT') } catch {}

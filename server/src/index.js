@@ -160,7 +160,7 @@ app.post('/api/auth/register', async (req,res) => {
  try {
   const hash = await bcrypt.hash(password,10)
   const info = db.prepare('INSERT INTO users(name,email,password_hash,phone,address,birth_date) VALUES(?,?,?,?,?,?)').run(name,email,hash,phone,address,birthDate)
-  const userRow = db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar,birth_date FROM users WHERE id=?').get(info.lastInsertRowid)
+  const userRow = db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar,birth_date,position,skill_level FROM users WHERE id=?').get(info.lastInsertRowid)
   const user = {...userRow,age:userRow.birth_date?calcAge(userRow.birth_date):null}
   res.status(201).json({token:tokenFor(user),user})
  } catch (e) {
@@ -175,7 +175,7 @@ app.post('/api/auth/login', async (req,res) => {
  if(!email || !password) return res.status(400).json({error:'กรุณากรอกอีเมลและรหัสผ่าน'})
  const user = db.prepare('SELECT * FROM users WHERE email=?').get(email)
  if (!user || !(await bcrypt.compare(password,user.password_hash))) return res.status(401).json({error:'อีเมลหรือรหัสผ่านไม่ถูกต้อง'})
- const safe = {id:user.id,name:user.name,email:user.email,role:user.role,points:user.points,wins:user.wins,losses:user.losses,phone:user.phone||null,address:user.address||null,avatar:user.avatar||null,birth_date:user.birth_date||null,age:user.birth_date?calcAge(user.birth_date):null,auth_version:user.auth_version}
+ const safe = {id:user.id,name:user.name,email:user.email,role:user.role,points:user.points,wins:user.wins,losses:user.losses,phone:user.phone||null,address:user.address||null,avatar:user.avatar||null,birth_date:user.birth_date||null,age:user.birth_date?calcAge(user.birth_date):null,position:user.position||'',skill_level:user.skill_level||'beginner',auth_version:user.auth_version}
  res.json({token:tokenFor(safe),user:safe})
 })
 const hashResetCode = (code) => crypto.createHash('sha256').update(code).digest('hex')
@@ -219,22 +219,25 @@ app.post('/api/notifications/:id/read', auth, (req,res) => { db.prepare('UPDATE 
 app.post('/api/notifications/read-all', auth, (req,res) => { db.prepare('UPDATE notifications SET read=1 WHERE user_id=?').run(req.user.id); res.json({ok:true}) })
 
 app.get('/api/me', auth, (req,res) => {
- const user = db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar,birth_date,created_at FROM users WHERE id=?').get(req.user.id)
+ const user = db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar,birth_date,position,skill_level,created_at FROM users WHERE id=?').get(req.user.id)
  res.json({...user,age:user.birth_date?calcAge(user.birth_date):null})
 })
 app.patch('/api/me', auth, (req,res) => {
  const name=String(req.body.name||'').trim(), phone=String(req.body.phone||'').trim(), address=String(req.body.address||'').trim(), birthDate=req.body.birthDate===undefined?null:String(req.body.birthDate||'').trim()
+ const position=String(req.body.position??'').trim(), skillLevel=String(req.body.skillLevel??'beginner').trim()
  const avatar=req.body.avatar==null||req.body.avatar===''?null:String(req.body.avatar)
  if(!name||name.length>80)return res.status(400).json({error:'กรุณากรอกชื่อให้ถูกต้อง'})
  if(!validDate(birthDate)||birthDate>bangkokDate()||calcAge(birthDate)===null||calcAge(birthDate)<13)return res.status(400).json({error:'วันเกิดไม่ถูกต้องหรืออายุต่ำกว่า 13 ปี'})
  if(phone.length<8||phone.length>20)return res.status(400).json({error:'กรุณากรอกเบอร์โทรให้ถูกต้อง'})
  if(!address||address.length>300)return res.status(400).json({error:'กรุณากรอกที่อยู่ให้ถูกต้อง'})
+ if(position.length>30)return res.status(400).json({error:'ตำแหน่งที่เล่นยาวเกินไป'})
+ if(!['beginner','casual','intermediate','advanced'].includes(skillLevel))return res.status(400).json({error:'ระดับการเล่นไม่ถูกต้อง'})
  if(req.body.birthDate!==undefined && (!birthDate||!validDate(birthDate)||birthDate>bangkokDate()||calcAge(birthDate)===null))return res.status(400).json({error:'วันเกิดไม่ถูกต้อง'})
  if(req.body.birthDate!==undefined && calcAge(birthDate)<13)return res.status(400).json({error:'ผู้ใช้งานต้องมีอายุอย่างน้อย 13 ปี'})
  if(avatar && (!/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/i.test(avatar)||avatar.length>180000)) return res.status(400).json({error:'รูปโปรไฟล์ไม่ถูกต้องหรือมีขนาดใหญ่เกินไป'})
- if(req.body.birthDate!==undefined) db.prepare('UPDATE users SET name=?,phone=?,address=?,avatar=?,birth_date=? WHERE id=?').run(name,phone,address,avatar,birthDate,req.user.id)
- else db.prepare('UPDATE users SET name=?,phone=?,address=?,birth_date=?,avatar=? WHERE id=?').run(name,phone,address,birthDate,avatar,req.user.id)
- const user=db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar,birth_date FROM users WHERE id=?').get(req.user.id)
+ if(req.body.birthDate!==undefined) db.prepare('UPDATE users SET name=?,phone=?,address=?,avatar=?,birth_date=?,position=?,skill_level=? WHERE id=?').run(name,phone,address,avatar,birthDate,position,skillLevel,req.user.id)
+ else db.prepare('UPDATE users SET name=?,phone=?,address=?,birth_date=?,avatar=?,position=?,skill_level=? WHERE id=?').run(name,phone,address,birthDate,avatar,position,skillLevel,req.user.id)
+ const user=db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar,birth_date,position,skill_level FROM users WHERE id=?').get(req.user.id)
  res.json({...user,age:user.birth_date?calcAge(user.birth_date):null})
 })
 
@@ -320,7 +323,7 @@ app.post('/api/bookings/:id/cancel', auth, (req,res) => {
 })
 
 app.get('/api/matches', (req,res) => {
- const rows = db.prepare(`SELECT m.*,v.name venue_name,b.end_time,(SELECT COUNT(*) FROM match_players mp WHERE mp.match_id=m.id) players,(SELECT COUNT(*) FROM match_players mp JOIN users u ON u.id=mp.user_id WHERE mp.match_id=m.id AND u.birth_date IS NOT NULL AND (CAST(strftime('%Y',date('now','+7 hours')) AS INTEGER)-CAST(strftime('%Y',u.birth_date) AS INTEGER)-(strftime('%m-%d',date('now','+7 hours'))<strftime('%m-%d',u.birth_date))) BETWEEN 13 AND 15) age_13_15,(SELECT COUNT(*) FROM match_players mp JOIN users u ON u.id=mp.user_id WHERE mp.match_id=m.id AND u.birth_date IS NOT NULL AND (CAST(strftime('%Y',date('now','+7 hours')) AS INTEGER)-CAST(strftime('%Y',u.birth_date) AS INTEGER)-(strftime('%m-%d',date('now','+7 hours'))<strftime('%m-%d',u.birth_date))) BETWEEN 16 AND 18) age_16_18,(SELECT COUNT(*) FROM match_players mp JOIN users u ON u.id=mp.user_id WHERE mp.match_id=m.id AND u.birth_date IS NOT NULL AND (CAST(strftime('%Y',date('now','+7 hours')) AS INTEGER)-CAST(strftime('%Y',u.birth_date) AS INTEGER)-(strftime('%m-%d',date('now','+7 hours'))<strftime('%m-%d',u.birth_date))) BETWEEN 19 AND 25) age_19_25,(SELECT COUNT(*) FROM match_players mp JOIN users u ON u.id=mp.user_id WHERE mp.match_id=m.id AND u.birth_date IS NOT NULL AND (CAST(strftime('%Y',date('now','+7 hours')) AS INTEGER)-CAST(strftime('%Y',u.birth_date) AS INTEGER)-(strftime('%m-%d',date('now','+7 hours'))<strftime('%m-%d',u.birth_date))) >= 26) age_26_plus FROM matches m JOIN venues v ON v.id=m.venue_id LEFT JOIN bookings b ON b.id=m.booking_id WHERE m.open_for_join=1 AND (b.status='confirmed') AND NOT EXISTS (SELECT 1 FROM split_bills sb WHERE sb.booking_id=m.booking_id AND sb.status='closed') ORDER BY m.match_date,m.start_time`).all()
+ const rows = db.prepare(`SELECT m.*,v.name venue_name,b.end_time,(SELECT COUNT(*) FROM match_players mp WHERE mp.match_id=m.id) players,(SELECT COUNT(*) FROM match_players mp JOIN users u ON u.id=mp.user_id WHERE mp.match_id=m.id AND u.birth_date IS NOT NULL AND (CAST(strftime('%Y',date('now','+7 hours')) AS INTEGER)-CAST(strftime('%Y',u.birth_date) AS INTEGER)-(strftime('%m-%d',date('now','+7 hours'))<strftime('%m-%d',u.birth_date))) BETWEEN 13 AND 15) age_13_15,(SELECT COUNT(*) FROM match_players mp JOIN users u ON u.id=mp.user_id WHERE mp.match_id=m.id AND u.birth_date IS NOT NULL AND (CAST(strftime('%Y',date('now','+7 hours')) AS INTEGER)-CAST(strftime('%Y',u.birth_date) AS INTEGER)-(strftime('%m-%d',date('now','+7 hours'))<strftime('%m-%d',u.birth_date))) BETWEEN 16 AND 18) age_16_18,(SELECT COUNT(*) FROM match_players mp JOIN users u ON u.id=mp.user_id WHERE mp.match_id=m.id AND u.birth_date IS NOT NULL AND (CAST(strftime('%Y',date('now','+7 hours')) AS INTEGER)-CAST(strftime('%Y',u.birth_date) AS INTEGER)-(strftime('%m-%d',date('now','+7 hours'))<strftime('%m-%d',u.birth_date))) BETWEEN 19 AND 25) age_19_25,(SELECT COUNT(*) FROM match_players mp JOIN users u ON u.id=mp.user_id WHERE mp.match_id=m.id AND u.birth_date IS NOT NULL AND (CAST(strftime('%Y',date('now','+7 hours')) AS INTEGER)-CAST(strftime('%Y',u.birth_date) AS INTEGER)-(strftime('%m-%d',date('now','+7 hours'))<strftime('%m-%d',u.birth_date))) >= 26) age_26_plus,(SELECT COUNT(*) FROM match_players mp JOIN users u ON u.id=mp.user_id WHERE mp.match_id=m.id AND u.skill_level='beginner') skill_beginner,(SELECT COUNT(*) FROM match_players mp JOIN users u ON u.id=mp.user_id WHERE mp.match_id=m.id AND u.skill_level='casual') skill_casual,(SELECT COUNT(*) FROM match_players mp JOIN users u ON u.id=mp.user_id WHERE mp.match_id=m.id AND u.skill_level='intermediate') skill_intermediate,(SELECT COUNT(*) FROM match_players mp JOIN users u ON u.id=mp.user_id WHERE mp.match_id=m.id AND u.skill_level='advanced') skill_advanced FROM matches m JOIN venues v ON v.id=m.venue_id LEFT JOIN bookings b ON b.id=m.booking_id WHERE m.open_for_join=1 AND (b.status='confirmed') AND NOT EXISTS (SELECT 1 FROM split_bills sb WHERE sb.booking_id=m.booking_id AND sb.status='closed') ORDER BY m.match_date,m.start_time`).all()
  const visible = rows.filter(r => bookingState(r.match_date,r.start_time,r.end_time) !== 'EXPIRED')
  res.json(visible.map(r=>({...r,state:bookingState(r.match_date,r.start_time,r.end_time)})))
 })
@@ -415,7 +418,7 @@ const getReliability = (userId) => {
 app.get('/api/matches/:id/players', auth, (req,res) => {
  const m=db.prepare('SELECT id,creator_id,max_players,open_for_join FROM matches WHERE id=?').get(req.params.id)
  if(!m) return res.status(404).json({error:'เกิดข้อผิดพลาด'})
- syncAttendance(m.id); const players=db.prepare("SELECT u.id,u.name,u.phone,u.birth_date,CASE WHEN u.birth_date IS NOT NULL THEN (CAST(strftime('%Y',date('now','+7 hours')) AS INTEGER)-CAST(strftime('%Y',u.birth_date) AS INTEGER)-(strftime('%m-%d',date('now','+7 hours'))<strftime('%m-%d',u.birth_date))) ELSE NULL END AS age,ma.status attendance_status,CASE WHEN u.id=? THEN 1 ELSE 0 END AS owner FROM match_players mp JOIN users u ON u.id=mp.user_id LEFT JOIN match_attendance ma ON ma.match_id=mp.match_id AND ma.user_id=mp.user_id WHERE mp.match_id=? ORDER BY owner DESC,u.name").all(m.creator_id,m.id)
+ syncAttendance(m.id); const players=db.prepare("SELECT u.id,u.name,u.birth_date,u.position,u.skill_level,ur.reliability_score,CASE WHEN u.birth_date IS NOT NULL THEN (CAST(strftime('%Y',date('now','+7 hours')) AS INTEGER)-CAST(strftime('%Y',u.birth_date) AS INTEGER)-(strftime('%m-%d',date('now','+7 hours'))<strftime('%m-%d',u.birth_date))) ELSE NULL END AS age,ma.status attendance_status,CASE WHEN u.id=? THEN 1 ELSE 0 END AS owner FROM match_players mp JOIN users u ON u.id=mp.user_id LEFT JOIN match_attendance ma ON ma.match_id=mp.match_id AND ma.user_id=mp.user_id LEFT JOIN user_reliability ur ON ur.user_id=u.id WHERE mp.match_id=? ORDER BY owner DESC,u.name").all(m.creator_id,m.id)
  res.json({match:m,players})
 })
 app.post('/api/matches/:id/leave', auth, (req,res) => {
