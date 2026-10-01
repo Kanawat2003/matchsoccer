@@ -5,7 +5,7 @@ import type {User} from './api'
 export default function Friends({user}:{user:User|null}){
  const [q,setQ]=useState(''),[results,setResults]=useState<any[]>([]),[data,setData]=useState<any>(null),[teams,setTeams]=useState<any[]>([]),[team,setTeam]=useState<any>(null),[teamStats,setTeamStats]=useState<any>(null),[newTeam,setNewTeam]=useState(''),[editName,setEditName]=useState(''),[msg,setMsg]=useState('')
  const load=()=>{if(!user)return;void api.friends().then(setData).catch(()=>setData(null));void api.teams().then(setTeams).catch(()=>setTeams([]))}
- useEffect(()=>{load()},[user])
+ useEffect(()=>{if(!user)return;void api.friends().then(setData).catch(()=>setData(null));void api.teams().then(setTeams).catch(()=>setTeams([]))},[user])
  if(!user)return <section className="page"><h1>เน€เธเธทเนเธญเธเนเธฅเธฐเธ—เธตเธก</h1><div className="panel">เธเธฃเธธเธ“เธฒเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเธเนเธญเธ</div></section>
  const search=()=>{setMsg('');if(q.trim().length<2){setResults([]);return}void api.searchUsers(q.trim()).then(setResults).catch(e=>setMsg(e.message))}
  const openTeam=(id:number)=>{setMsg('');void Promise.all([api.team(id),api.teamStats(id)]).then(([detail,stats])=>{setTeam(detail);setEditName(detail.name);setTeamStats(stats)}).catch(e=>setMsg(e.message))}
@@ -27,11 +27,11 @@ export default function Friends({user}:{user:User|null}){
  </section>
 }
 function TeamMatchCenter({teamId}:{teamId:number}){
- const [data,setData]=useState<any>(null),[loading,setLoading]=useState(true),[error,setError]=useState('')
- useEffect(()=>{let active=true;setLoading(true);api.teamMatchCenter(teamId).then(x=>{if(active)setData(x)}).catch(e=>{if(active)setError(e.message||'เนเธซเธฅเธ” Team Match Center เนเธกเนเธชเธณเน€เธฃเนเธ')}).finally(()=>{if(active)setLoading(false)});return()=>{active=false}},[teamId])
+ const [data,setData]=useState<any>(null),[error,setError]=useState('')
+ useEffect(()=>{let active=true;api.teamMatchCenter(teamId).then(x=>{if(active){setData(x);setError('')}}).catch(e=>{if(active)setError(e.message||'Team Match Center load failed')});return()=>{active=false}},[teamId])
  const [players,setPlayers]=useState<Record<number,any[]>>({})
  const showPlayers=async(id:number)=>{try{const r=await api.players(id);setPlayers(x=>({...x,[id]:r.players}))}catch(e){setError(e instanceof Error?e.message:'เนเธซเธฅเธ”เธเธนเนเน€เธฅเนเธเนเธกเนเธชเธณเน€เธฃเนเธ')}}
- if(loading)return <div className="panel"><p className="eyebrow">TEAM MATCH CENTER</p><p>เธเธณเธฅเธฑเธเนเธซเธฅเธ”เธจเธนเธเธขเนเธเธฅเธฒเธเนเธกเธ•เธเน...</p></div>
+ if(!data&&!error)return <div className="panel"><p className="eyebrow">TEAM MATCH CENTER</p><p>เธเธณเธฅเธฑเธเนเธซเธฅเธ”เธจเธนเธเธขเนเธเธฅเธฒเธเนเธกเธ•เธเน...</p></div>
  if(error&&!data)return <div className="panel"><p className="eyebrow">TEAM MATCH CENTER</p><p>{error}</p></div>
  return <div className="panel"><p className="eyebrow">TEAM MATCH CENTER</p><h3>เธจเธนเธเธขเนเธเธฅเธฒเธเนเธกเธ•เธเนเธ—เธตเธก</h3>
   <div className="stats-grid"><div><b>{data?.summary?.upcoming||0}</b><span>เธเธฑเธ”เธ–เธฑเธ”เนเธ</span></div><div><b>{data?.summary?.in_progress||0}</b><span>เธเธณเธฅเธฑเธเนเธเนเธ</span></div><div><b>{data?.summary?.pending_invites||0}</b><span>เธฃเธญเธเธฒเธฃเธ•เธญเธเธฃเธฑเธ</span></div><div><b>{data?.summary?.accepted_invites||0}</b><span>เธ•เธญเธเธฃเธฑเธเนเธฅเนเธง</span></div></div>
