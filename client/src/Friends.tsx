@@ -28,11 +28,12 @@ export default function Friends({user}:{user:User|null}){
  </section>
 }
 function TeamMatchCenter({teamId,isOwner}:{teamId:number;isOwner:boolean}){
- const [data,setData]=useState<any>(null),[error,setError]=useState(''),[reminding,setReminding]=useState<number|null>(null),[players,setPlayers]=useState<Record<number,any[]>>({}),[attendance,setAttendance]=useState<Record<number,any[]>>({}),[checking,setChecking]=useState<number|null>(null)
+ const [data,setData]=useState<any>(null),[error,setError]=useState(''),[reminding,setReminding]=useState<number|null>(null),[players,setPlayers]=useState<Record<number,any[]>>({}),[attendance,setAttendance]=useState<Record<number,any[]>>({}),[checking,setChecking]=useState<number|null>(null),[finalizing,setFinalizing]=useState<number|null>(null),[finalized,setFinalized]=useState<Record<number,any>>({})
  useEffect(()=>{let active=true;api.teamMatchCenter(teamId).then(x=>{if(active){setData(x);setError('')}}).catch(e=>{if(active)setError(e.message||'โหลด Match Center ไม่สำเร็จ')});return()=>{active=false}},[teamId])
  const showPlayers=async(id:number)=>{try{const [p,a]=await Promise.all([api.players(id),api.reliability(id) as Promise<any>]);setPlayers(x=>({...x,[id]:p.players}));setAttendance(x=>({...x,[id]:a.players}))}catch(e){setError(e instanceof Error?e.message:'โหลดข้อมูลผู้เล่นไม่สำเร็จ')}}
  const checkIn=async(matchId:number,userId:number)=>{setChecking(userId);try{await api.checkIn(matchId,userId);const a=await api.reliability(matchId) as any;setAttendance(x=>({...x,[matchId]:a.players}))}catch(e){setError(e instanceof Error?e.message:'เช็กชื่อไม่สำเร็จ')}finally{setChecking(null)}}
  const remind=async(matchId:number,userId:number)=>{setReminding(userId);try{await api.teamInviteRemind(teamId,matchId,userId)}catch(e){setError(e instanceof Error?e.message:'ส่งการแจ้งเตือนไม่สำเร็จ')}finally{setReminding(null)}}
+ const finalize=async(matchId:number)=>{setFinalizing(matchId);try{const r=await api.finalizeAttendance(matchId) as any;setFinalized(x=>({...x,[matchId]:r.summary}));setData((x:any)=>({...x}));}catch(e){setError(e instanceof Error?e.message:'ปิดผลการแข่งขันไม่สำเร็จ')}finally{setFinalizing(null)}}
  const statusText=(s:string)=>s==='attended'?'มาแล้ว':s==='no_show'?'ไม่มา':s==='cancelled'?'ยกเลิก':'รอเช็กชื่อ'
  if(!data&&!error)return <div className="panel"><p className="eyebrow">TEAM MATCH CENTER</p><p>กำลังโหลดศูนย์กลางแมตช์ทีม...</p></div>
  if(error&&!data)return <div className="panel"><p className="eyebrow">TEAM MATCH CENTER</p><p>{error}</p></div>
@@ -44,6 +45,7 @@ function TeamMatchCenter({teamId,isOwner}:{teamId:number;isOwner:boolean}){
    {players[m.id]&&<div className="team-player-list">{players[m.id].map((p:any)=><span key={p.id}>{p.name}{p.owner?' 👑':''} · Reliability {p.reliability_score??100}%</span>)}</div>}
    {m.invites?.length>0&&<div className="team-invite-list"><strong>คำเชิญสมาชิก</strong>{m.invites.map((v:any)=><div className="team-invite-row" key={v.id}><span>{v.name}</span><span className="team-invite-status">{v.status==='pending'?'รอตอบรับ':v.status==='accepted'?'ตอบรับแล้ว':'ปฏิเสธแล้ว'}</span>{isOwner&&v.status==='pending'&&<button type="button" disabled={reminding===v.user_id} onClick={()=>void remind(m.id,v.user_id)}>{reminding===v.user_id?'กำลังส่ง...':'ส่งเตือน'}</button>}</div>)}</div>}
   </div>):<p>ทีมยังไม่มีแมตช์ที่กำลังดำเนินการหรือนัดที่กำลังจะถึง</p>}
+  {data?.completed_matches?.length>0&&<div className="panel"><h3>ผลการแข่งขันที่ผ่านมา</h3>{data.completed_matches.map((m:any)=>{const a=finalized[m.id]||m.attendance;return <div className="booking-row" key={m.id}><div><b>{m.title}</b><p>{m.match_date} · {m.start_time}-{m.end_time} · {m.venue_name}</p><small>เข้าร่วม {a.attended} · ไม่มา {a.no_show} · ยกเลิก {a.cancelled} · ทั้งหมด {a.total}</small></div><button type="button" disabled={finalizing===m.id} onClick={()=>void finalize(m.id)}>{finalizing===m.id?'กำลังปิดผล...':finalized[m.id]?'อัปเดตแล้ว':'อัปเดต Reliability'}</button></div>})}</div>}
   {error&&<p className="auth-error">{error}</p>}
  </div>
 }

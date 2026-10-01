@@ -294,7 +294,8 @@ app.get('/api/teams/:id/match-center', auth, (req,res) => {
  const rows=db.prepare("SELECT m.id,m.title,m.match_date,m.start_time,m.end_time,m.max_players,m.open_for_join,v.name venue_name,b.status booking_status,(SELECT COUNT(*) FROM match_players mp WHERE mp.match_id=m.id) players,(SELECT COUNT(*) FROM team_match_invites i WHERE i.match_id=m.id AND i.status='pending') pending_invites,(SELECT COUNT(*) FROM team_match_invites i WHERE i.match_id=m.id AND i.status='accepted') accepted_invites,(SELECT COUNT(*) FROM team_match_invites i WHERE i.match_id=m.id AND i.status='rejected') rejected_invites FROM matches m JOIN venues v ON v.id=m.venue_id LEFT JOIN bookings b ON b.id=m.booking_id WHERE m.team_id=? ORDER BY m.match_date,m.start_time").all(id)
  const matches=rows.map(m=>{const invites=db.prepare("SELECT i.id,i.user_id,i.status,i.created_at,u.name FROM team_match_invites i JOIN users u ON u.id=i.user_id WHERE i.match_id=? ORDER BY CASE i.status WHEN 'pending' THEN 0 WHEN 'accepted' THEN 1 ELSE 2 END,u.name").all(m.id);return {...m,state:bookingState(m.match_date,m.start_time,m.end_time),spots_left:Math.max(0,Number(m.max_players)-Number(m.players)),invites}})
  const active=matches.filter(m=>m.state!=='EXPIRED'&&m.booking_status==='confirmed')
- res.json({team,summary:{total:matches.length,upcoming:matches.filter(m=>m.state==='UPCOMING').length,in_progress:matches.filter(m=>m.state==='IN_PROGRESS').length,pending_invites:matches.reduce((n,m)=>n+Number(m.pending_invites||0),0),accepted_invites:matches.reduce((n,m)=>n+Number(m.accepted_invites||0),0)},next_match:active[0]||null,matches:active.slice(0,20)})
+ const completed=matches.filter(m=>m.state==='EXPIRED').slice(0,20).map(m=>{syncAttendance(m.id);const a=db.prepare("SELECT SUM(CASE WHEN status='attended' THEN 1 ELSE 0 END) attended,SUM(CASE WHEN status='no_show' THEN 1 ELSE 0 END) no_show,SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) cancelled,COUNT(*) total FROM match_attendance WHERE match_id=?").get(m.id);return {...m,attendance:{attended:Number(a.attended||0),no_show:Number(a.no_show||0),cancelled:Number(a.cancelled||0),total:Number(a.total||0)}}})
+ res.json({team,summary:{total:matches.length,upcoming:matches.filter(m=>m.state==='UPCOMING').length,in_progress:matches.filter(m=>m.state==='IN_PROGRESS').length,pending_invites:matches.reduce((n,m)=>n+Number(m.pending_invites||0),0),accepted_invites:matches.reduce((n,m)=>n+Number(m.accepted_invites||0),0)},next_match:active[0]||null,matches:active.slice(0,20),completed_matches:completed})
 })
 app.post('/api/teams/:id/matches/:matchId/invites/:userId/remind', auth, (req,res) => {
  const teamId=Number(req.params.id),matchId=Number(req.params.matchId),userId=Number(req.params.userId)
@@ -577,11 +578,14 @@ app.post('/api/matches/:id/check-in/:userId', auth, (req,res) => {
  const now=new Date(),openAt=new Date(start.getTime()-2*60*60*1000),closeAt=new Date(end.getTime()+30*60*1000)
  if(now<openAt||now>closeAt)return res.status(409).json({error:'ยังไม่ถึงช่วงเวลาสำหรับเช็กชื่อ'})
  syncAttendance(m.id)
- db.prepare("UPDATE match_attendance SET status='attended',checked_in_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE match_id=? AND user_id=?").run(m.id,req.params.userId)
+ const attendanceRow=db.prepare('SELECT status FROM match_attendance WHERE match_id=? AND user_id=?').get(m.id,req.params.userId)
+ const wasAttended=attendanceRow?.status==='attended'
+ db.prepare("UPDATE match_attendance SET status='attended',checked_in_at=COALESCE(checked_in_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE match_id=? AND user_id=?").run(m.id,req.params.userId)
  audit(req.user.id,'match.check_in','match',m.id,{user_id:Number(req.params.userId)})
  syncReliability(Number(req.params.userId))
- awardPoints(Number(req.params.userId),10,'match_attended:'+m.id,'เข้าร่วมแมตช์สำเร็จ')
- res.json({ok:true})
+ if(!wasAttended) awardPoints(Number(req.params.userId),10,'match_attended:'+m.id,'เข้าร่วมแมตช์สำเร็จ')
+ const summary=db.prepare("SELECT SUM(CASE WHEN status='attended' THEN 1 ELSE 0 END) attended,SUM(CASE WHEN status='no_show' THEN 1 ELSE 0 END) no_show,SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) cancelled,COUNT(*) total FROM match_attendance WHERE match_id=?").get(m.id)
+ res.json({ok:true,summary:{attended:Number(summary.attended||0),no_show:Number(summary.no_show||0),cancelled:Number(summary.cancelled||0),total:Number(summary.total||0)}})
 })
 app.post('/api/matches/:id/finalize-attendance', auth, (req,res) => {
  const m=db.prepare('SELECT id,creator_id,match_date,start_time,end_time FROM matches WHERE id=?').get(req.params.id)
@@ -591,7 +595,8 @@ app.post('/api/matches/:id/finalize-attendance', auth, (req,res) => {
  syncAttendance(m.id)
  const ids=db.prepare('SELECT user_id FROM match_attendance WHERE match_id=?').all(m.id)
  ids.forEach(x=>syncReliability(x.user_id))
- res.json({ok:true})
+ const summary=db.prepare("SELECT SUM(CASE WHEN status='attended' THEN 1 ELSE 0 END) attended,SUM(CASE WHEN status='no_show' THEN 1 ELSE 0 END) no_show,SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) cancelled,COUNT(*) total FROM match_attendance WHERE match_id=?").get(m.id)
+ res.json({ok:true,summary:{attended:Number(summary.attended||0),no_show:Number(summary.no_show||0),cancelled:Number(summary.cancelled||0),total:Number(summary.total||0)}})
 })
 app.post('/api/split-bills', auth, (req,res) => {
  const {bookingId,shareCount,names=[]} = req.body
