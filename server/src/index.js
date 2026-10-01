@@ -65,6 +65,9 @@ const notify = (userId,type,title,message) => {
  return db.prepare('INSERT INTO notifications(user_id,type,title,message) VALUES(?,?,?,?)').run(userId,type,safeTitle,safeMessage)
 }
 
+const awardPoints = (userId, points, eventKey, description) => { const r=db.prepare('INSERT OR IGNORE INTO point_events(user_id,event_key,points,description) VALUES(?,?,?,?)').run(userId,eventKey,points,description); if(r.changes) db.prepare('UPDATE users SET points=points+? WHERE id=?').run(points,userId); return r.changes===1 }
+const pointTier = (points) => points>=500?'Platinum':points>=250?'Gold':points>=100?'Silver':'Bronze'
+sendMatchReminders()
 const audit = (actorUserId, action, entityType, entityId=null, metadata={}) => { try { db.prepare('INSERT INTO audit_logs(actor_user_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)').run(actorUserId||null,String(action),String(entityType),entityId==null?null:Number(entityId),JSON.stringify(metadata||{})) } catch {} }
 const bangkokDate = () => new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date())
 const validDate = (date) => /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(new Date(`${date}T00:00:00+07:00`).getTime()) && new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date(`${date}T00:00:00+07:00`))===date
@@ -72,7 +75,6 @@ const bookingState = (date,start,end) => { const now=new Date(); const from=new 
 const calcAge = (birthDate) => { const b=new Date(`${birthDate}T00:00:00+07:00`), now=new Date(); let age=now.getUTCFullYear()-b.getUTCFullYear(); const nowMonth=now.getUTCMonth(), birthMonth=b.getUTCMonth(); if(nowMonth<birthMonth || (nowMonth===birthMonth && now.getUTCDate()<b.getUTCDate())) age--; return age>=0?age:null }
 
 app.get('/api/health', (_,res) => res.json({ok:true, service:'MatchSoccer API'}))
-sendMatchReminders()
 const publicVenueSelect=`SELECT v.*,COALESCE(f.name,v.name) facility_name,COALESCE(f.address,v.address) facility_address,f.phone facility_phone,f.description facility_description,f.image facility_image,
  CASE WHEN v.facility_id IS NULL THEN 1 ELSE (SELECT COUNT(*) FROM venues vf WHERE vf.facility_id=v.facility_id AND vf.review_status='approved' AND vf.service_status='active') END facility_field_count
  FROM venues v LEFT JOIN facilities f ON f.id=v.facility_id`
@@ -474,6 +476,15 @@ app.delete('/api/matches/:id/players/:userId', auth, (req,res) => {
  res.json({ok:true})
 })
 
+app.get('/api/me/stats', auth, (req,res) => {
+ const r=getReliability(req.user.id)
+ const joined=Number(db.prepare('SELECT COUNT(*) n FROM match_attendance WHERE user_id=?').get(req.user.id).n||0)
+ const attended=Number(db.prepare("SELECT COUNT(*) n FROM match_attendance WHERE user_id=? AND status='attended'").get(req.user.id).n||0)
+ const upcoming=Number(db.prepare("SELECT COUNT(*) n FROM match_players mp JOIN matches m ON m.id=mp.match_id JOIN bookings b ON b.id=m.booking_id WHERE mp.user_id=? AND b.status='confirmed' AND (m.match_date || ' ' || m.start_time) >= (strftime('%Y-%m-%d %H:%M','now','+7 hours'))").get(req.user.id).n||0)
+ const pointRows=db.prepare('SELECT points,description,created_at FROM point_events WHERE user_id=? ORDER BY created_at DESC LIMIT 10').all(req.user.id)
+ const user=db.prepare('SELECT points,wins,losses FROM users WHERE id=?').get(req.user.id)
+ res.json({matches_joined:joined,matches_attended:attended,upcoming_matches:upcoming,points:Number(user?.points||0),tier:pointTier(Number(user?.points||0)),wins:Number(user?.wins||0),losses:Number(user?.losses||0),recent_points:pointRows,reliability:r})
+})
 app.get('/api/me/reliability', auth, (req,res) => res.json(getReliability(req.user.id)))
 app.get('/api/matches/:id/reliability', auth, (req,res) => {
  const m=db.prepare('SELECT id,creator_id,match_date,start_time,end_time FROM matches WHERE id=?').get(req.params.id)
@@ -498,6 +509,7 @@ app.post('/api/matches/:id/check-in/:userId', auth, (req,res) => {
  db.prepare("UPDATE match_attendance SET status='attended',checked_in_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE match_id=? AND user_id=?").run(m.id,req.params.userId)
  audit(req.user.id,'match.check_in','match',m.id,{user_id:Number(req.params.userId)})
  syncReliability(Number(req.params.userId))
+ awardPoints(Number(req.params.userId),10,'match_attended:'+m.id,'เข้าร่วมแมตช์สำเร็จ')
  res.json({ok:true})
 })
 app.post('/api/matches/:id/finalize-attendance', auth, (req,res) => {

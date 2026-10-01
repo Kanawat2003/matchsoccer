@@ -111,6 +111,7 @@ CREATE INDEX IF NOT EXISTS idx_split_bills_booking_status ON split_bills(booking
 CREATE INDEX IF NOT EXISTS idx_split_bill_members_bill_paid ON split_bill_members(split_bill_id,paid);
 `) } catch (error) { console.error('index migration failed', error) }
 
+try { db.exec("CREATE TABLE IF NOT EXISTS point_events (id INTEGER PRIMARY KEY AUTOINCREMENT,user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,event_key TEXT NOT NULL,points INTEGER NOT NULL,description TEXT NOT NULL,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE(user_id,event_key)); CREATE INDEX IF NOT EXISTS idx_point_events_user ON point_events(user_id,created_at);") } catch {}
 export default db
 
 try { db.exec("ALTER TABLE venues ADD COLUMN review_status TEXT NOT NULL DEFAULT 'approved'") } catch {}
