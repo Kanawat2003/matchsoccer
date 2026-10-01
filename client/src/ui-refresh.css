@@ -42,3 +42,9 @@
 .booking-field{min-width:0;padding-right:44px}.booking-field>span{display:block;margin-bottom:4px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#718078}.booking-field h2{overflow-wrap:anywhere}
 @media(max-width:800px){.booking-photo{min-height:150px}.booking-photo img{min-height:150px}}
 @media(max-width:480px){.booking-photo{min-height:125px}.booking-photo img{min-height:125px}.booking-field{padding-right:36px}}
+.stats-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:8px}
+.stats-grid>div{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:76px;padding:10px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);text-align:center}
+.stats-grid b{font-size:1.35rem;line-height:1.1}
+.stats-grid span{margin-top:5px;font-size:.78rem;opacity:.78}
+@media (max-width:700px){.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:420px){.stats-grid{grid-template-columns:1fr 1fr;gap:7px}.stats-grid>div{min-height:68px;padding:8px}.stats-grid b{font-size:1.15rem}}
