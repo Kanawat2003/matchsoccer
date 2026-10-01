@@ -37,9 +37,29 @@ const auth = (req,res,next) => {
  } catch { res.status(401).json({error:'กรุณาเข้าสู่ระบบ'}) }
 }
 
+const sendMatchReminders = () => {
+ const now=Date.now()
+ const rows=db.prepare("SELECT m.id,m.title,m.match_date,m.start_time,m.end_time FROM matches m JOIN bookings b ON b.id=m.booking_id WHERE m.open_for_join=1 AND b.status='confirmed'").all()
+ for(const m of rows){
+  const start=new Date(m.match_date+'T'+m.start_time+':00+07:00').getTime()
+  for(const hours of [24,2]){
+   const due=start-hours*60*60*1000
+   if(now<due || now>due+15*60*1000) continue
+   const players=db.prepare('SELECT user_id FROM match_players WHERE match_id=?').all(m.id)
+   for(const p of players){
+    try{
+     const r=db.prepare('INSERT OR IGNORE INTO match_reminders(match_id,user_id,hours_before) VALUES(?,?,?)').run(m.id,p.user_id,hours)
+     if(r.changes) notify(p.user_id,'match_reminder','ใกล้ถึงเวลานัด','นัด '+m.title+' เริ่มใน '+hours+' ชั่วโมง วันที่ '+m.match_date+' เวลา '+m.start_time)
+    }catch{}
+   }
+  }
+ }
+}
+const reminderTimer=setInterval(sendMatchReminders,5*60*1000)
+reminderTimer.unref()
 const notify = (userId,type,title,message) => {
- const titles={booking:'มีการจองสนามใหม่',cancel:'การจองถูกยกเลิก',match_close:'เจ้าของนัดปิดรับคน',join:'มีคนเข้าร่วมนัด',leave:'มีคนออกจากนัด',remove:'คุณถูกนำออกจากนัด'}
- const messages={booking:'มีการจองสนามใหม่',cancel:'การจองสนามถูกยกเลิก',match_close:'เจ้าของนัดปิดรับสมาชิกแล้ว',join:'มีผู้เล่นเข้าร่วมการนัดหมาย',leave:'มีผู้เล่นออกจากการนัดหมาย',remove:'คุณถูกนำออกจากการนัดหมาย'}
+ const titles={booking:'มีการจองสนามใหม่',cancel:'การจองถูกยกเลิก',match_close:'เจ้าของนัดปิดรับคน',join:'มีคนเข้าร่วมนัด',leave:'มีคนออกจากนัด',remove:'คุณถูกนำออกจากนัด',match_reminder:'ใกล้ถึงเวลานัด'}
+ const messages={booking:'มีการจองสนามใหม่',cancel:'การจองสนามถูกยกเลิก',match_close:'เจ้าของนัดปิดรับสมาชิกแล้ว',join:'มีผู้เล่นเข้าร่วมการนัดหมาย',leave:'มีผู้เล่นออกจากการนัดหมาย',remove:'คุณถูกนำออกจากการนัดหมาย',match_reminder:'ใกล้ถึงเวลาการนัดหมาย'}
  const safeTitle=isBrokenThai(title)?(titles[type]||'มีการแจ้งเตือนใหม่'):title
  const safeMessage=isBrokenThai(message)?(messages[type]||'มีการแจ้งเตือนใหม่'):message
  return db.prepare('INSERT INTO notifications(user_id,type,title,message) VALUES(?,?,?,?)').run(userId,type,safeTitle,safeMessage)
@@ -52,6 +72,7 @@ const bookingState = (date,start,end) => { const now=new Date(); const from=new 
 const calcAge = (birthDate) => { const b=new Date(`${birthDate}T00:00:00+07:00`), now=new Date(); let age=now.getUTCFullYear()-b.getUTCFullYear(); const nowMonth=now.getUTCMonth(), birthMonth=b.getUTCMonth(); if(nowMonth<birthMonth || (nowMonth===birthMonth && now.getUTCDate()<b.getUTCDate())) age--; return age>=0?age:null }
 
 app.get('/api/health', (_,res) => res.json({ok:true, service:'MatchSoccer API'}))
+sendMatchReminders()
 const publicVenueSelect=`SELECT v.*,COALESCE(f.name,v.name) facility_name,COALESCE(f.address,v.address) facility_address,f.phone facility_phone,f.description facility_description,f.image facility_image,
  CASE WHEN v.facility_id IS NULL THEN 1 ELSE (SELECT COUNT(*) FROM venues vf WHERE vf.facility_id=v.facility_id AND vf.review_status='approved' AND vf.service_status='active') END facility_field_count
  FROM venues v LEFT JOIN facilities f ON f.id=v.facility_id`
