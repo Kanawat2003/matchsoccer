@@ -163,6 +163,7 @@ app.post('/api/auth/register', async (req,res) => {
   const hash = await bcrypt.hash(password,10)
   const info = db.prepare('INSERT INTO users(name,email,password_hash,phone,address,birth_date) VALUES(?,?,?,?,?,?)').run(name,email,hash,phone,address,birthDate)
   const userRow = db.prepare('SELECT id,name,email,role,points,wins,losses,phone,address,avatar,birth_date,position,skill_level FROM users WHERE id=?').get(info.lastInsertRowid)
+  audit(Number(info.lastInsertRowid),'REGISTER_SUCCESS','auth',Number(info.lastInsertRowid))
   const user = {...userRow,age:userRow.birth_date?calcAge(userRow.birth_date):null}
   res.status(201).json({token:tokenFor(user),user})
  } catch (e) {
@@ -176,8 +177,9 @@ app.post('/api/auth/login', async (req,res) => {
  const email=String(req.body.email||'').trim().toLowerCase(), password=String(req.body.password||'')
  if(!email || !password) return res.status(400).json({error:'กรุณากรอกอีเมลและรหัสผ่าน'})
  const user = db.prepare('SELECT * FROM users WHERE email=?').get(email)
- if (!user || !(await bcrypt.compare(password,user.password_hash))) return res.status(401).json({error:'อีเมลหรือรหัสผ่านไม่ถูกต้อง'})
+ if (!user || !(await bcrypt.compare(password,user.password_hash))) { audit(null,'LOGIN_FAILED','auth'); return res.status(401).json({error:'อีเมลหรือรหัสผ่านไม่ถูกต้อง'}) }
  const safe = {id:user.id,name:user.name,email:user.email,role:user.role,points:user.points,wins:user.wins,losses:user.losses,phone:user.phone||null,address:user.address||null,avatar:user.avatar||null,birth_date:user.birth_date||null,age:user.birth_date?calcAge(user.birth_date):null,position:user.position||'',skill_level:user.skill_level||'beginner',auth_version:user.auth_version}
+ audit(user.id,'LOGIN_SUCCESS','auth',user.id)
  res.json({token:tokenFor(safe),user:safe})
 })
 const hashResetCode = (code) => crypto.createHash('sha256').update(code).digest('hex')
@@ -213,6 +215,7 @@ if(!email||!/^\d{6}$/.test(code)||newPassword.length<8) return res.status(400).j
  if(hashResetCode(code)!==row.code_hash){ db.prepare('UPDATE password_resets SET attempts=attempts+1 WHERE id=?').run(row.id); return res.status(400).json({error:'รหัสยืนยันไม่ถูกต้องหรือหมดอายุ'}) }
  const hash=await bcrypt.hash(newPassword,10)
  db.prepare('UPDATE users SET password_hash=?, auth_version=auth_version+1 WHERE id=?').run(hash,user.id)
+ audit(user.id,'PASSWORD_RESET','auth',user.id)
  db.prepare('UPDATE password_resets SET used=1 WHERE id=?').run(row.id)
  res.json({ok:true,message:'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว'})
 })
