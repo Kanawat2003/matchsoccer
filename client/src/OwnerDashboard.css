@@ -67,3 +67,12 @@
 .owner-dashboard .owner-edit-modal label,.owner-dashboard .owner-edit-modal .field-help{color:#d0dbd4}
 .owner-dashboard .owner-review-row p{color:#e1b36b}.owner-dashboard .image-error{color:#ffb0aa}
 .owner-dashboard .owner-grid span{font-weight:600}.owner-dashboard .facility-summary span{font-weight:600}
+
+/* Business overview */
+.owner-dashboard .owner-business-grid{margin-top:10px}
+.owner-dashboard .owner-business-grid>div{background:linear-gradient(145deg,#0d1e14,#0a1710);border-color:rgba(168,240,74,.08)}
+.owner-dashboard .owner-business-grid b{font-size:21px;overflow-wrap:anywhere}
+.owner-next-booking{margin-top:18px;padding:18px 20px;display:flex;justify-content:space-between;align-items:center;gap:16px;border-color:rgba(168,240,74,.16);background:linear-gradient(145deg,rgba(168,240,74,.08),rgba(10,23,16,.96))}
+.owner-next-booking h3{margin:2px 0 5px;font-size:20px}.owner-next-booking p{margin:0;color:#c9d6ce}.owner-next-booking small{display:block;margin-top:7px;color:#9eb0a4}.owner-next-booking>span{padding:7px 11px;border-radius:999px;background:rgba(60,190,110,.12);color:#8ff0b4;font-size:12px;font-weight:800;white-space:nowrap}
+@media(max-width:600px){.owner-next-booking{align-items:flex-start;flex-direction:column}.owner-next-booking>span{align-self:flex-start}}
+.owner-dashboard .owner-grid span{color:#d1ddd5}.owner-dashboard .owner-business-grid span{color:#c9d7cf}
