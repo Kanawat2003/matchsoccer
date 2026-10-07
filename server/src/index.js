@@ -600,6 +600,32 @@ app.post('/api/matches/:id/check-in/:userId', auth, (req,res) => {
  const summary=db.prepare("SELECT SUM(CASE WHEN status='attended' THEN 1 ELSE 0 END) attended,SUM(CASE WHEN status='no_show' THEN 1 ELSE 0 END) no_show,SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) cancelled,COUNT(*) total FROM match_attendance WHERE match_id=?").get(m.id)
  res.json({ok:true,summary:{attended:Number(summary.attended||0),no_show:Number(summary.no_show||0),cancelled:Number(summary.cancelled||0),total:Number(summary.total||0)}})
 })
+app.get('/api/matches/:id/result', auth, (req,res) => { const m=db.prepare('SELECT m.id,m.creator_id,m.team_id,m.match_date,m.start_time,m.end_time,t.name team_name,r.id result_id,r.team_a_score,r.opponent_name,r.team_b_score,r.submitted_by,r.created_at,r.updated_at FROM matches m LEFT JOIN teams t ON t.id=m.team_id LEFT JOIN match_results r ON r.match_id=m.id WHERE m.id=?').get(req.params.id);if(!m)return res.status(404).json({error:'ไม่พบข้อมูลนัด'});if(m.team_id&& !db.prepare('SELECT 1 FROM team_members WHERE team_id=? AND user_id=?').get(m.team_id,req.user.id))return res.status(403).json({error:'คุณไม่ได้อยู่ในทีมนี้'});res.json(m.result_id?{...m,result:{id:m.result_id,team_a_score:m.team_a_score,opponent_name:m.opponent_name,team_b_score:m.team_b_score,submitted_by:m.submitted_by,created_at:m.created_at,updated_at:m.updated_at}}:{...m,result:null}) })
+app.post('/api/matches/:id/result', auth, (req,res) => {
+ const m=db.prepare('SELECT m.*,b.status booking_status,t.name team_name FROM matches m JOIN bookings b ON b.id=m.booking_id LEFT JOIN teams t ON t.id=m.team_id WHERE m.id=?').get(req.params.id)
+ if(!m)return res.status(404).json({error:'ไม่พบข้อมูลนัด'})
+ if(m.creator_id!==req.user.id)return res.status(403).json({error:'เฉพาะเจ้าของนัดเท่านั้นที่บันทึกผลได้'})
+ if(!m.team_id)return res.status(409).json({error:'แมตช์นี้ยังไม่ได้ผูกกับทีม'})
+ if(m.booking_status!=='confirmed'||bookingState(m.match_date,m.start_time,m.end_time)!=='EXPIRED')return res.status(409).json({error:'ต้องรอให้การแข่งขันจบก่อนจึงบันทึกผลได้'})
+ const teamAScore=Number(req.body.teamAScore),teamBScore=Number(req.body.teamBScore),opponentName=String(req.body.opponentName||'').trim()
+ if(!Number.isInteger(teamAScore)||teamAScore<0||teamAScore>99||!Number.isInteger(teamBScore)||teamBScore<0||teamBScore>99||!opponentName||opponentName.length>80)return res.status(400).json({error:'กรุณากรอกชื่อคู่แข่งและสกอร์ให้ถูกต้อง'})
+ const existing=db.prepare('SELECT * FROM match_results WHERE match_id=?').get(m.id)
+ if(existing)return res.status(409).json({error:'บันทึกผลการแข่งขันนี้แล้ว'})
+ syncAttendance(m.id)
+ const attendedCount=Number(db.prepare("SELECT COUNT(*) n FROM match_attendance WHERE match_id=? AND status='attended'").get(m.id).n||0)
+ if(attendedCount<1)return res.status(409).json({error:'ต้องมีผู้เล่นที่เช็กชื่อว่าเข้าร่วมการแข่งขันอย่างน้อย 1 คน'})
+ const members=db.prepare("SELECT tm.user_id FROM team_members tm JOIN match_players mp ON mp.user_id=tm.user_id AND mp.match_id=? JOIN match_attendance ma ON ma.user_id=tm.user_id AND ma.match_id=mp.match_id AND ma.status='attended' WHERE tm.team_id=?").all(m.id,m.team_id)
+ const outcome=teamAScore>teamBScore?'win':teamAScore<teamBScore?'loss':'draw'
+ const points=outcome==='win'?20:outcome==='draw'?10:5
+ const result=db.transaction(()=>{
+  const r=db.prepare('INSERT INTO match_results(match_id,team_a_score,opponent_name,team_b_score,submitted_by) VALUES(?,?,?,?,?)').run(m.id,teamAScore,opponentName,teamBScore,req.user.id)
+  for(const member of members){db.prepare(`UPDATE users SET ${outcome==='win'?'wins=wins+1':outcome==='loss'?'losses=losses+1':'wins=wins'} WHERE id=?`).run(member.user_id);awardPoints(member.user_id,points,'match_result:'+m.id+':'+outcome,'ผลการแข่งขัน '+m.title+' '+teamAScore+'-'+teamBScore)}
+  audit(req.user.id,'match.result','match_result',Number(r.lastInsertRowid),{match_id:m.id,team_id:m.team_id,team_a_score:teamAScore,team_b_score:teamBScore,opponent_name:opponentName,outcome})
+  return r.lastInsertRowid
+ })()
+ const saved=db.prepare('SELECT * FROM match_results WHERE id=?').get(result)
+ res.status(201).json({ok:true,outcome,points_per_player:points,result:saved})
+})
 app.post('/api/matches/:id/finalize-attendance', auth, (req,res) => {
  const m=db.prepare('SELECT id,creator_id,match_date,start_time,end_time FROM matches WHERE id=?').get(req.params.id)
  if(!m)return res.status(404).json({error:'ไม่พบข้อมูลนัด'})
