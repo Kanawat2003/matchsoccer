@@ -251,6 +251,16 @@ app.get('/api/teams', auth, (req,res) => { const rows=db.prepare("SELECT t.id,t.
 app.post('/api/teams', auth, (req,res) => { const name=String(req.body.name||'').trim();if(name.length<2||name.length>50)return res.status(400).json({error:'ชื่อทีมต้องมี 2–50 ตัวอักษร'});const tx=db.transaction(()=>{const r=db.prepare('INSERT INTO teams(owner_id,name) VALUES(?,?)').run(req.user.id,name);db.prepare('INSERT INTO team_members(team_id,user_id) VALUES(?,?)').run(r.lastInsertRowid,req.user.id);return r.lastInsertRowid});const id=tx();res.status(201).json(db.prepare('SELECT t.id,t.name,t.owner_id,1 member_count FROM teams t WHERE t.id=?').get(id)) })
 app.post('/api/teams/:id/members', auth, (req,res) => { const teamId=Number(req.params.id),userId=Number(req.body.userId);const team=db.prepare('SELECT * FROM teams WHERE id=? AND owner_id=?').get(teamId,req.user.id);if(!team)return res.status(403).json({error:'เฉพาะเจ้าของทีมเท่านั้น'});if(!Number.isInteger(userId)||!db.prepare('SELECT 1 FROM friendships WHERE user_id=? AND friend_id=?').get(req.user.id,userId))return res.status(400).json({error:'เพิ่มได้เฉพาะเพื่อนของคุณ'});try{db.prepare('INSERT INTO team_members(team_id,user_id) VALUES(?,?)').run(teamId,userId);notify(userId,'join','ถูกเพิ่มเข้าทีม',req.user.name+' เพิ่มคุณเข้าทีม '+team.name);res.status(201).json({ok:true})}catch{res.status(409).json({error:'ผู้ใช้นี้อยู่ในทีมแล้ว'})} })
 app.delete('/api/teams/:id/members/:userId', auth, (req,res) => { const teamId=Number(req.params.id),userId=Number(req.params.userId);const team=db.prepare('SELECT * FROM teams WHERE id=?').get(teamId);if(!team)return res.status(404).json({error:'ไม่พบทีม'});if(userId===team.owner_id)return res.status(409).json({error:'เจ้าของทีมไม่สามารถถูกนำออกได้'});if(req.user.id!==team.owner_id&&req.user.id!==userId)return res.status(403).json({error:'ไม่มีสิทธิ์'});db.prepare('DELETE FROM team_members WHERE team_id=? AND user_id=?').run(teamId,userId);res.json({ok:true}) })
+app.get('/api/teams/:id', auth, (req,res) => {
+ const id=Number(req.params.id)
+ if(!Number.isInteger(id)) return res.status(400).json({error:'ไม่พบทีม'})
+ const team=db.prepare('SELECT id,name,owner_id FROM teams WHERE id=?').get(id)
+ if(!team) return res.status(404).json({error:'ไม่พบทีม'})
+ const memberAccess=db.prepare('SELECT 1 FROM team_members WHERE team_id=? AND user_id=?').get(id,req.user.id)
+ if(!memberAccess) return res.status(403).json({error:'คุณไม่ได้อยู่ในทีมนี้'})
+ const members=db.prepare("SELECT u.id,u.name,u.position,u.skill_level,u.birth_date,u.points,CAST((julianday('now')-julianday(u.birth_date))/365.2425 AS INTEGER) age FROM team_members tm JOIN users u ON u.id=tm.user_id WHERE tm.team_id=? ORDER BY CASE WHEN u.id=? THEN 0 ELSE 1 END,u.name").all(id,team.owner_id)
+ res.json({...team,members})
+})
 app.patch('/api/teams/:id', auth, (req,res) => {
  const id=Number(req.params.id), name=String(req.body.name||'').trim()
  const team=db.prepare('SELECT * FROM teams WHERE id=?').get(id)
