@@ -36,6 +36,31 @@
 /* Recommended match cards */
 .recommended-matches{box-sizing:border-box}
 
+/* Team cards and member search */
+.team-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.team-section-head h2,.team-section-head h3{margin:0 0 4px}
+.team-section-head p{margin:0;padding:0;border:0;opacity:.72}
+.team-count{flex:0 0 auto;padding:6px 10px;border-radius:999px;background:rgba(139,234,61,.1);border:1px solid rgba(139,234,61,.25);color:#a9ec76;font-size:12px;font-weight:800}
+.team-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:18px}
+.team-card{width:100%;display:grid;grid-template-columns:48px minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:center;gap:2px 12px;text-align:left;padding:15px;border:1px solid rgba(255,255,255,.1);border-radius:16px;background:linear-gradient(135deg,rgba(35,107,50,.32),rgba(13,29,18,.95));color:inherit;cursor:pointer;transition:.18s}
+.team-card:hover{transform:translateY(-2px);border-color:rgba(139,234,61,.4);box-shadow:0 10px 25px rgba(0,0,0,.18)}
+.team-card-icon{grid-row:1 / span 2;width:48px;height:48px;display:grid;place-items:center;border-radius:14px;background:rgba(139,234,61,.12);font-size:25px}
+.team-card-main{min-width:0;display:grid;gap:3px}
+.team-card-main b{font-size:16px;overflow-wrap:anywhere}
+.team-card-main small,.team-card-meta small{font-size:11px;opacity:.68}
+.team-card-meta{display:grid;justify-items:end;gap:2px}
+.team-card-meta b{font-size:19px;color:#a9ec76}
+.team-card-action{grid-column:2 / -1;justify-self:end;font-size:12px;color:#8bea3d;margin-top:5px}
+.team-empty{margin-top:18px;padding:20px;border:1px dashed rgba(255,255,255,.14);border-radius:14px;text-align:center;opacity:.72}
+.team-member-search{margin:16px 0}
+.team-search-results{display:grid;gap:8px;margin-top:10px}
+.team-search-result{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(0,0,0,.12)}
+.team-search-result>div{min-width:0;display:grid;gap:3px}
+.team-search-result small{opacity:.7;overflow-wrap:anywhere}
+.team-member-row{align-items:center}
+@media(max-width:700px){.team-card-grid{grid-template-columns:1fr}.team-section-head{align-items:flex-start}.team-card{grid-template-columns:44px minmax(0,1fr) auto}.team-card-icon{width:44px;height:44px}}
+@media(max-width:480px){.team-section-head{flex-direction:column}.team-card{grid-template-columns:42px minmax(0,1fr)}.team-card-meta{grid-column:3;grid-row:1}.team-card-action{grid-column:2 / -1}.team-search-result{align-items:flex-start;flex-direction:column}.team-search-result button{width:100%}}
+
 /* Booking modal field photo polish */
 .booking-photo{position:relative;overflow:hidden;display:grid;place-items:center;min-height:100%;background:radial-gradient(circle at 35% 25%,#76a94c,#286335 55%,#153d24);font-size:76px}
 .booking-photo img{display:block;width:100%;height:100%;min-height:240px;object-fit:cover}
