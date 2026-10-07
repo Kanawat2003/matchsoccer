@@ -567,8 +567,9 @@ app.get('/api/me/stats', auth, (req,res) => {
  const attended=Number(db.prepare("SELECT COUNT(*) n FROM match_attendance WHERE user_id=? AND status='attended'").get(req.user.id).n||0)
  const upcoming=Number(db.prepare("SELECT COUNT(*) n FROM match_players mp JOIN matches m ON m.id=mp.match_id JOIN bookings b ON b.id=m.booking_id WHERE mp.user_id=? AND b.status='confirmed' AND (m.match_date || ' ' || m.start_time) >= (strftime('%Y-%m-%d %H:%M','now','+7 hours'))").get(req.user.id).n||0)
  const pointRows=db.prepare('SELECT points,description,created_at FROM point_events WHERE user_id=? ORDER BY created_at DESC LIMIT 10').all(req.user.id)
+ const history=db.prepare("SELECT m.id,m.title,m.match_date,m.start_time,m.end_time,v.name venue_name,r.team_a_score,r.opponent_name,r.team_b_score,CASE WHEN r.team_a_score>r.team_b_score THEN 'win' WHEN r.team_a_score<r.team_b_score THEN 'loss' ELSE 'draw' END outcome,ma.status attendance_status FROM matches m JOIN venues v ON v.id=m.venue_id JOIN match_players mp ON mp.match_id=m.id AND mp.user_id=? LEFT JOIN match_results r ON r.match_id=m.id LEFT JOIN match_attendance ma ON ma.match_id=m.id AND ma.user_id=? WHERE (m.match_date || ' ' || m.start_time) < (strftime('%Y-%m-%d %H:%M','now','+7 hours')) ORDER BY m.match_date DESC,m.start_time DESC LIMIT 10").all(req.user.id,req.user.id)
  const user=db.prepare('SELECT points,wins,losses FROM users WHERE id=?').get(req.user.id)
- res.json({matches_joined:joined,matches_attended:attended,upcoming_matches:upcoming,points:Number(user?.points||0),tier:pointTier(Number(user?.points||0)),wins:Number(user?.wins||0),losses:Number(user?.losses||0),recent_points:pointRows,reliability:r})
+ res.json({matches_joined:joined,matches_attended:attended,upcoming_matches:upcoming,points:Number(user?.points||0),tier:pointTier(Number(user?.points||0)),wins:Number(user?.wins||0),losses:Number(user?.losses||0),recent_points:pointRows,history,reliability:r})
 })
 app.get('/api/me/reliability', auth, (req,res) => res.json(getReliability(req.user.id)))
 app.get('/api/matches/:id/reliability', auth, (req,res) => {
