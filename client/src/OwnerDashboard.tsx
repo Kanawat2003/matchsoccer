@@ -2,6 +2,7 @@ import {useCallback,useEffect,useRef,useState} from 'react'
 import {api,venueWorkflowApi} from './api'
 import type {Facility,Venue,VenueRequest,OwnerBookingRow} from './api'
 import './OwnerDashboard.css'
+import OwnerRefunds from './OwnerRefunds'
 
 const readImage=(file:File,max=640)=>new Promise<string>((resolve,reject)=>{
  if(!/^image\/(png|jpe?g|webp)$/i.test(file.type)) return reject(new Error('รองรับรูป PNG, JPG หรือ WebP'))
@@ -43,6 +44,7 @@ export default function OwnerDashboard(){
   {showField&&<FieldModal facility={facilities.find(f=>f.id===showField)!} close={()=>setShowField(null)} done={async()=>{setShowField(null);setMessage('ส่งสนามให้แอดมินตรวจสอบแล้ว');await load()}}/>}
   {selected&&<FacilityEditModal facility={selected} close={()=>setSelected(null)} done={async()=>{setSelected(null);setMessage('บันทึกข้อมูลสถานที่แล้ว');await load()}}/>}
   {editing&&<FieldEditModal venue={editing} close={()=>setEditing(null)} setVenue={setEditing} save={saveField} saving={saving}/>}
+  <OwnerRefunds/>
  </section>
 }
 

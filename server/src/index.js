@@ -65,6 +65,23 @@ const notify = (userId,type,title,message) => {
  return db.prepare('INSERT INTO notifications(user_id,type,title,message) VALUES(?,?,?,?)').run(userId,type,safeTitle,safeMessage)
 }
 
+const checkOverdueRefunds = () => {
+ const now=new Date().toISOString()
+ const overdue=db.prepare("SELECT * FROM refund_requests WHERE refund_amount>0 AND status IN ('pending','proof_submitted','disputed') AND due_at<=?").all(now)
+ for(const r of overdue){
+  if(r.owner_id) db.prepare('UPDATE users SET refund_suspended=1 WHERE id=?').run(r.owner_id)
+  if(!r.overdue_notified){
+   notify(r.customer_id,'refund_overdue','เงินคืนล่าช้า','รายการคืนเงิน #'+r.id+' เกินกำหนด 24 ชั่วโมงแล้ว ทีมงานได้รับแจ้งเพื่อช่วยตรวจสอบ')
+   if(r.owner_id)notify(r.owner_id,'refund_overdue','รายการคืนเงินเกินกำหนด','รายการคืนเงิน #'+r.id+' เกินกำหนด 24 ชั่วโมง สิทธิ์รับจองใหม่ถูกระงับชั่วคราว')
+   db.prepare("SELECT id FROM users WHERE role='admin'").all().forEach(a=>notify(a.id,'refund_overdue','ต้องตรวจสอบเงินคืนล่าช้า','รายการคืนเงิน #'+r.id+' เกินกำหนด 24 ชั่วโมง'))
+   db.prepare('UPDATE refund_requests SET status=CASE WHEN status=\'pending\' THEN \'overdue\' ELSE status END,overdue_notified=1,updated_at=CURRENT_TIMESTAMP WHERE id=?').run(r.id)
+   audit(null,'refund.overdue','refund',r.id,{owner_id:r.owner_id})
+  }
+ }
+ db.prepare("UPDATE users SET refund_suspended=0 WHERE refund_suspended=1 AND id NOT IN (SELECT owner_id FROM refund_requests WHERE owner_id IS NOT NULL AND (status='disputed' OR (status IN ('pending','overdue','proof_submitted') AND due_at<=?)))").run(now)
+}
+const refundTimer=setInterval(checkOverdueRefunds,60*1000);refundTimer.unref()
+
 const awardPoints = (userId, points, eventKey, description) => { const r=db.prepare('INSERT OR IGNORE INTO point_events(user_id,event_key,points,description) VALUES(?,?,?,?)').run(userId,eventKey,points,description); if(r.changes) db.prepare('UPDATE users SET points=points+? WHERE id=?').run(points,userId); return r.changes===1 }
 const pointTier = (points) => points>=500?'Platinum':points>=250?'Gold':points>=100?'Silver':'Bronze'
 sendMatchReminders()
@@ -80,7 +97,7 @@ const publicVenueSelect=`SELECT v.*,COALESCE(f.name,v.name) facility_name,COALES
  FROM venues v LEFT JOIN facilities f ON f.id=v.facility_id`
 app.get('/api/venues', (req,res) => {
  const q = `%${req.query.q || ''}%`
- const rows = db.prepare(`${publicVenueSelect} WHERE v.review_status='approved' AND v.service_status='active' AND (v.name LIKE ? OR v.area LIKE ? OR f.name LIKE ? OR f.address LIKE ?) ORDER BY f.name,v.id`).all(q,q,q,q)
+ const rows = db.prepare(`${publicVenueSelect} WHERE v.review_status='approved' AND v.service_status='active' AND COALESCE((SELECT u.refund_suspended FROM users u WHERE u.id=v.owner_id),0)=0 AND (v.name LIKE ? OR v.area LIKE ? OR f.name LIKE ? OR f.address LIKE ?) ORDER BY f.name,v.id`).all(q,q,q,q)
  res.json(rows)
 })
 app.get('/api/facilities/:id', (req,res) => {
@@ -369,6 +386,7 @@ app.post('/api/bookings', auth, (req,res) => {
  const venue=db.prepare("SELECT id,price_per_hour,owner_id,name,review_status,service_status FROM venues WHERE id=?").get(venueId)
  if(!venue) return res.status(404).json({error:'ไม่พบสนาม'})
  if(venue.review_status!=='approved'||venue.service_status!=='active') return res.status(409).json({error:'สนามนี้ยังไม่พร้อมให้บริการ'})
+ if(venue.owner_id&&db.prepare('SELECT refund_suspended FROM users WHERE id=?').get(venue.owner_id)?.refund_suspended) return res.status(409).json({error:'เจ้าของสนามถูกระงับการรับจองใหม่ชั่วคราว เนื่องจากมีรายการคืนเงินเกินกำหนด'})
  const clientPrice=Number(totalPrice)
  if(!Number.isFinite(clientPrice)||clientPrice<=0||clientPrice!==Number(venue.price_per_hour)) return res.status(400).json({error:'เกิดข้อผิดพลาด'})
  try {
@@ -414,23 +432,83 @@ app.get('/api/owner/bookings', auth, (req,res) => {
  if (req.user.role !== 'owner' && req.user.role !== 'admin') return res.status(403).json({error:'เกิดข้อผิดพลาด'})
  const rows = req.user.role === 'admin'
   ? db.prepare("SELECT b.*,v.name venue_name,u.name user_name,u.email user_email FROM bookings b JOIN venues v ON v.id=b.venue_id JOIN users u ON u.id=b.user_id ORDER BY b.booking_date DESC,b.start_time DESC").all()
-  : db.prepare("SELECT b.*,v.name venue_name,u.name user_name,u.email user_email FROM bookings b JOIN venues v ON v.id=b.venue_id JOIN users u ON u.id=b.user_id WHERE v.owner_id=? ORDER BY b.booking_date DESC,b.start_time DESC").all(req.user.id)
+  : db.prepare("SELECT b.*,v.name venue_name,u.name user_name,u.email user_email FROM bookings b JOIN venues v ON v.id=b.venue_id LEFT JOIN facilities f ON f.id=v.facility_id JOIN users u ON u.id=b.user_id WHERE COALESCE(v.owner_id,f.owner_id)=? ORDER BY b.booking_date DESC,b.start_time DESC").all(req.user.id)
  const now=Date.now()
  res.json(rows.map(b=>{const start=new Date(b.booking_date+'T'+b.start_time+':00+07:00').getTime();const end=new Date(b.booking_date+'T'+b.end_time+':00+07:00').getTime();const state=String(b.status).toUpperCase()==='CANCELLED'?'CANCELLED':now<start?'UPCOMING':now<end?'IN_PROGRESS':'COMPLETED';return {...b,state}}))
 })
+const refundPublicSelect = `SELECT rr.id,rr.booking_id,rr.customer_id,COALESCE(rr.owner_id,v.owner_id,f.owner_id) owner_id,rr.bank_name,rr.account_name,rr.account_number,rr.account_type,rr.bank_branch,rr.contact_phone,rr.refund_amount,rr.policy_percent,rr.payment_claimed,rr.status,rr.due_at,rr.slip_data_url,rr.slip_amount,rr.transfer_reference,rr.owner_note,rr.submitted_at,rr.verified_at,rr.created_at,rr.updated_at,b.booking_date,b.start_time,b.end_time,b.total_price,v.name venue_name,c.name customer_name,c.email customer_email,o.name owner_name FROM refund_requests rr JOIN bookings b ON b.id=rr.booking_id JOIN venues v ON v.id=b.venue_id LEFT JOIN facilities f ON f.id=v.facility_id JOIN users c ON c.id=rr.customer_id LEFT JOIN users o ON o.id=COALESCE(rr.owner_id,v.owner_id,f.owner_id)`
 app.post('/api/bookings/:id/cancel', auth, (req,res) => {
- const b=db.prepare("SELECT b.*,v.name venue_name,v.owner_id FROM bookings b JOIN venues v ON v.id=b.venue_id WHERE b.id=? AND b.user_id=? AND b.status='confirmed'").get(req.params.id,req.user.id)
- if(!b)return res.status(404).json({error:'ไม่พบข้อมูลการจอง'})
- const now=new Date(),start=new Date(`${b.booking_date}T${b.start_time}:00+07:00`),end=new Date(`${b.booking_date}T${b.end_time}:00+07:00`)
+ const {bankName,accountName,accountNumber,accountType='savings',bankBranch='',contactPhone='',paymentAlreadyMade=false}=req.body||{}
+ const b=db.prepare("SELECT b.*,v.name venue_name,COALESCE(v.owner_id,f.owner_id) owner_id FROM bookings b JOIN venues v ON v.id=b.venue_id LEFT JOIN facilities f ON f.id=v.facility_id WHERE b.id=? AND b.user_id=? AND b.status='confirmed'").get(req.params.id,req.user.id)
+ if(!b)return res.status(404).json({error:'ไม่พบข้อมูลการจอง หรือรายการนี้ถูกยกเลิกแล้ว'})
+ const now=Date.now(),start=new Date(`${b.booking_date}T${b.start_time}:00+07:00`).getTime(),end=new Date(`${b.booking_date}T${b.end_time}:00+07:00`).getTime()
  if(now>=start)return res.status(409).json({error:now>=end?'การจองนี้หมดเวลาแล้ว ไม่สามารถยกเลิกได้':'สนามกำลังใช้งานอยู่ ไม่สามารถยกเลิกการจองได้'})
- db.prepare("UPDATE bookings SET status='cancelled' WHERE id=?").run(b.id)
- audit(req.user.id,'booking.cancel','booking',b.id,{venue_id:b.venue_id,booking_date:b.booking_date,start_time:b.start_time})
+ if(!String(bankName||'').trim()||!String(accountName||'').trim()||!/^[0-9-]{6,20}$/.test(String(accountNumber||'').replace(/\s/g,''))||!['savings','current'].includes(accountType))return res.status(400).json({error:'กรุณากรอกธนาคาร ชื่อบัญชี เลขบัญชี และประเภทบัญชีให้ถูกต้อง'})
+ const hours=(start-now)/3600000
+ const percent=paymentAlreadyMade===true?(hours>=24?100:hours>=2?50:0):0
+ const amount=Math.floor(Number(b.total_price)*percent/100)
+ const dueAt=new Date(now+24*3600000).toISOString()
+ const cancelTx=db.transaction(()=>{
+  db.prepare("UPDATE bookings SET status='cancelled' WHERE id=? AND status='confirmed'").run(b.id)
+  db.prepare('INSERT INTO refund_requests(booking_id,customer_id,owner_id,bank_name,account_name,account_number,account_type,bank_branch,contact_phone,refund_amount,policy_percent,payment_claimed,status,due_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(b.id,req.user.id,b.owner_id||null,String(bankName).trim(),String(accountName).trim(),String(accountNumber).replace(/\s/g,''),accountType,String(bankBranch||'').trim().slice(0,100),String(contactPhone||'').trim().slice(0,30),amount,percent,paymentAlreadyMade===true?1:0,amount>0?'pending':'not_required',dueAt)
+  db.prepare('UPDATE matches SET open_for_join=0 WHERE booking_id=?').run(b.id)
+  db.prepare("UPDATE split_bills SET status='closed' WHERE booking_id=? AND status='open'").run(b.id)
+ })
+ try{cancelTx()}catch(e){return res.status(409).json({error:'ไม่สามารถยกเลิกได้ อาจมีรายการนี้ถูกยกเลิกไปแล้ว'})}
+ const refund=db.prepare('SELECT * FROM refund_requests WHERE booking_id=?').get(b.id)
+ audit(req.user.id,'booking.cancel','booking',b.id,{venue_id:b.venue_id,booking_date:b.booking_date,start_time:b.start_time,refund_amount:amount,policy_percent:percent})
  const members=db.prepare('SELECT user_id FROM match_players mp JOIN matches m ON m.id=mp.match_id WHERE m.booking_id=? AND mp.user_id<>?').all(b.id,b.user_id)
- db.prepare('UPDATE matches SET open_for_join=0 WHERE booking_id=?').run(b.id)
- db.prepare("UPDATE split_bills SET status='closed' WHERE booking_id=? AND status='open'").run(b.id)
  members.forEach(x=>notify(x.user_id,'cancel','การจองถูกยกเลิก',`นัดของคุณ ${b.booking_date} ${b.start_time} ถูกยกเลิก`))
- if(b.owner_id && Number(b.owner_id)!==req.user.id) notify(Number(b.owner_id),'cancel','การจองถูกยกเลิก',`การจองสนาม ${b.venue_name} วันที่ ${b.booking_date} เวลา ${b.start_time}-${b.end_time} ถูกยกเลิก`)
- res.json({ok:true})
+ if(b.owner_id&&Number(b.owner_id)!==req.user.id&&amount>0)notify(Number(b.owner_id),'refund_due','มีรายการคืนเงินใหม่',`การจอง ${b.venue_name} วันที่ ${b.booking_date} เวลา ${b.start_time} ต้องคืนเงิน ฿${amount.toLocaleString()} ภายใน 24 ชั่วโมง`)
+ notify(req.user.id,'refund_pending','ยกเลิกสำเร็จ — รอรับเงินคืน',amount>0?`ยกเลิกการจองแล้ว ยอดเงินคืนตามนโยบาย ฿${amount.toLocaleString()} เจ้าของสนามต้องดำเนินการภายใน 24 ชั่วโมง`:'ยกเลิกการจองสำเร็จ ตามนโยบายรายการนี้ไม่มีเงินคืน')
+ res.json({ok:true,refund:{id:refund.id,amount,percent,status:refund.status,due_at:dueAt}})
+})
+app.get('/api/refunds/me',auth,(req,res)=>res.json(db.prepare(`${refundPublicSelect} WHERE rr.customer_id=? ORDER BY rr.created_at DESC`).all(req.user.id)))
+app.get('/api/owner/refunds',auth,(req,res)=>{
+ if(!['owner','admin'].includes(req.user.role))return res.status(403).json({error:'ไม่มีสิทธิ์ดูรายการคืนเงิน'})
+ const rows=req.user.role==='admin'?db.prepare(`${refundPublicSelect} WHERE rr.status NOT IN ('completed','not_required') ORDER BY rr.due_at`).all():db.prepare(`${refundPublicSelect} WHERE COALESCE(rr.owner_id,v.owner_id,f.owner_id)=? AND rr.status NOT IN ('completed','not_required') ORDER BY rr.due_at`).all(req.user.id)
+ res.json(rows)
+})
+app.post('/api/owner/refunds/:id/proof',auth,(req,res)=>{
+ if(!['owner','admin'].includes(req.user.role))return res.status(403).json({error:'ไม่มีสิทธิ์จัดการรายการคืนเงิน'})
+ const row=db.prepare('SELECT rr.*,COALESCE(rr.owner_id,v.owner_id,f.owner_id) effective_owner_id FROM refund_requests rr JOIN bookings b ON b.id=rr.booking_id JOIN venues v ON v.id=b.venue_id LEFT JOIN facilities f ON f.id=v.facility_id WHERE rr.id=?').get(req.params.id)
+ if(!row|| (req.user.role!=='admin'&&Number(row.effective_owner_id)!==req.user.id))return res.status(404).json({error:'ไม่พบรายการคืนเงิน'})
+ if(!['pending','proof_submitted','overdue','disputed'].includes(row.status))return res.status(409).json({error:'สถานะรายการนี้ไม่รองรับการส่งหลักฐาน'})
+ const slip=String(req.body?.slipDataUrl||'')
+ if(!/^(data:image\/(png|jpe?g|webp)|data:application\/pdf);base64,[A-Za-z0-9+/=]+$/i.test(slip)||slip.length>2800000)return res.status(400).json({error:'กรุณาแนบสลิปภาพ PNG/JPG/WEBP หรือไฟล์ PDF ขนาดไม่เกิน 2 MB'})
+ const amount=Number(req.body?.amount)
+ if(!Number.isFinite(amount)||amount<=0||amount!==Number(row.refund_amount))return res.status(400).json({error:'ยอดโอนต้องตรงกับยอดคืนเงินที่ระบบกำหนด'})
+ const ref=String(req.body?.reference||'').trim().slice(0,100),note=String(req.body?.note||'').trim().slice(0,500)
+ db.prepare("UPDATE refund_requests SET slip_data_url=?,slip_amount=?,transfer_reference=?,owner_note=?,status='proof_submitted',submitted_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=?").run(slip,amount,ref,note,row.id)
+ notify(row.customer_id,'refund_proof','เจ้าของสนามส่งหลักฐานคืนเงินแล้ว',`มีสลิปคืนเงินสำหรับการจอง ${row.booking_id} โปรดตรวจสอบใน MatchSoccer`)
+ audit(req.user.id,'refund.proof_submitted','refund',row.id,{amount,reference:ref})
+ res.json({ok:true,status:'proof_submitted'})
+})
+app.post('/api/refunds/:id/confirm',auth,(req,res)=>{
+ const row=db.prepare('SELECT * FROM refund_requests WHERE id=? AND customer_id=?').get(req.params.id,req.user.id)
+ if(!row)return res.status(404).json({error:'ไม่พบรายการคืนเงิน'})
+ const action=req.body?.action
+ if(action==='received'){
+  if(row.status!=='proof_submitted')return res.status(409).json({error:'เจ้าของสนามยังไม่ได้ส่งหลักฐานคืนเงิน'})
+  if(Number(row.slip_amount)!==Number(row.refund_amount))return res.status(409).json({error:'ยอดในหลักฐานไม่ตรงกับยอดที่ต้องคืน กรุณาติดต่อผู้ดูแลระบบ'})
+  db.prepare("UPDATE refund_requests SET status='completed',verified_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=?").run(row.id)
+  if(row.owner_id)notify(row.owner_id,'refund_completed','ลูกค้ายืนยันรับเงินคืนแล้ว',`รายการคืนเงิน #${row.id} เสร็จสมบูรณ์`)
+  audit(req.user.id,'refund.confirmed','refund',row.id,{action})
+  res.json({ok:true,status:'completed'});return
+ }
+ if(action==='dispute'){
+  db.prepare("UPDATE refund_requests SET status='disputed',updated_at=CURRENT_TIMESTAMP WHERE id=?").run(row.id)
+  if(row.owner_id)notify(row.owner_id,'refund_disputed','ลูกค้าแจ้งปัญหาเงินคืน',`ลูกค้าแจ้งปัญหารายการคืนเงิน #${row.id} กรุณาตรวจสอบ`)
+  db.prepare("UPDATE users SET refund_suspended=1 WHERE id=?").run(row.owner_id)
+  const admins=db.prepare("SELECT id FROM users WHERE role='admin'").all();admins.forEach(a=>notify(a.id,'refund_disputed','มีข้อพิพาทการคืนเงิน',`รายการคืนเงิน #${row.id} ต้องตรวจสอบ`))
+  audit(req.user.id,'refund.disputed','refund',row.id,{action})
+  res.json({ok:true,status:'disputed'});return
+ }
+ res.status(400).json({error:'คำสั่งไม่ถูกต้อง'})
+})
+app.get('/api/admin/refunds',auth,(req,res)=>{
+ if(req.user.role!=='admin')return res.status(403).json({error:'ไม่มีสิทธิ์ดูรายการคืนเงิน'})
+ res.json(db.prepare(`${refundPublicSelect} WHERE rr.status IN ('overdue','disputed','proof_submitted','pending') ORDER BY rr.due_at`).all())
 })
 
 app.get('/api/matches', (req,res) => {

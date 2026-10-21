@@ -2,6 +2,7 @@ import {useCallback,useEffect,useMemo,useState} from 'react'
 import {api} from './api'
 import type {OwnerBookingRow} from './api'
 import './OwnerBookings.css'
+import OwnerRefunds from './OwnerRefunds'
 
 const statusLabel=(s:string)=>{const x=s.toUpperCase();return x==='CONFIRMED'?'ยืนยันแล้ว':x==='CANCELLED'?'ยกเลิกแล้ว':x==='COMPLETED'?'เสร็จสิ้น':x==='EXPIRED'?'หมดเวลา':x==='IN_PROGRESS'?'กำลังใช้งาน':x==='UPCOMING'?'กำลังจะถึง':s}
 const dateLabel=(date:string)=>new Intl.DateTimeFormat('th-TH',{dateStyle:'medium',timeZone:'Asia/Bangkok'}).format(new Date(`${date}T00:00:00+07:00`))
@@ -29,5 +30,6 @@ export default function OwnerBookings(){
   {!loading&&!error&&rows.length>0&&<div className="owner-booking-filters" role="tablist" aria-label="กรองรายการจอง">{[['all','ทั้งหมด'],['UPCOMING','กำลังจะถึง'],['IN_PROGRESS','กำลังใช้งาน'],['COMPLETED','เสร็จสิ้น'],['CANCELLED','ยกเลิกแล้ว']].map(([value,label])=><button key={value} type="button" className={filter===value?'active':''} role="tab" aria-selected={filter===value} aria-controls="owner-booking-results" onClick={()=>setFilter(value)}>{label}</button>)}</div>}
   {!loading&&rows.length>0&&filtered.length===0&&<div className="panel owner-empty">ไม่มีรายการในหมวดนี้</div>}
   <div id="owner-booking-results" className="owner-booking-list" role="tabpanel" aria-live="polite">{filtered.map(b=>{const status=displayStatus(b,now);return <article className="panel owner-booking-card" key={b.id} aria-label={`การจอง ${b.venue_name} ${dateLabel(b.booking_date)} ${b.start_time}-${b.end_time}`}><div><h3>{b.venue_name}</h3><p>{dateLabel(b.booking_date)} • {b.start_time}–{b.end_time}</p></div><div className="owner-booking-user"><strong>{b.user_name}</strong><span>{b.user_email}</span></div><div className="sr-only">หมายเลขการจอง {b.id}</div><div className="owner-booking-price"><b>฿{b.total_price.toLocaleString()}</b><small className={'owner-status status-'+status.toLowerCase()}>{statusLabel(status)}</small></div></article>})}</div>
+  <OwnerRefunds/>
  </section>
 }

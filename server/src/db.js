@@ -116,6 +116,24 @@ try { db.exec("CREATE TABLE IF NOT EXISTS friend_requests (id INTEGER PRIMARY KE
 try { db.exec("ALTER TABLE matches ADD COLUMN team_id INTEGER REFERENCES teams(id)") } catch {}
 try { db.exec("CREATE TABLE IF NOT EXISTS team_match_invites (id INTEGER PRIMARY KEY AUTOINCREMENT,match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,status TEXT NOT NULL DEFAULT 'pending',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE(match_id,user_id)); CREATE INDEX IF NOT EXISTS idx_team_match_invites_user ON team_match_invites(user_id,status);") } catch {}
 try { db.exec("CREATE TABLE IF NOT EXISTS team_invitations (id INTEGER PRIMARY KEY AUTOINCREMENT,team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,inviter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,status TEXT NOT NULL DEFAULT 'pending',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE(team_id,user_id)); CREATE INDEX IF NOT EXISTS idx_team_invitations_user ON team_invitations(user_id,status); CREATE INDEX IF NOT EXISTS idx_team_invitations_team ON team_invitations(team_id,status);") } catch {}
+// Cancellation and refund workflow (direct transfer between customer and venue owner).
+try { db.exec("ALTER TABLE users ADD COLUMN refund_suspended INTEGER NOT NULL DEFAULT 0") } catch {}
+try { db.exec("ALTER TABLE refund_requests ADD COLUMN payment_claimed INTEGER NOT NULL DEFAULT 0") } catch {}
+try { db.exec(`CREATE TABLE IF NOT EXISTS refund_requests (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ booking_id INTEGER NOT NULL UNIQUE REFERENCES bookings(id),
+ customer_id INTEGER NOT NULL REFERENCES users(id),
+ owner_id INTEGER REFERENCES users(id),
+ bank_name TEXT NOT NULL, account_name TEXT NOT NULL, account_number TEXT NOT NULL,
+ account_type TEXT NOT NULL, bank_branch TEXT NOT NULL DEFAULT '', contact_phone TEXT NOT NULL DEFAULT '',
+ refund_amount INTEGER NOT NULL DEFAULT 0, policy_percent INTEGER NOT NULL DEFAULT 0,
+ status TEXT NOT NULL DEFAULT 'pending', due_at TEXT NOT NULL,
+ slip_data_url TEXT, slip_amount INTEGER, transfer_reference TEXT, owner_note TEXT NOT NULL DEFAULT '',
+ submitted_at TEXT, verified_at TEXT, verified_by INTEGER REFERENCES users(id),
+ overdue_notified INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+); CREATE INDEX IF NOT EXISTS idx_refund_requests_owner_status_due ON refund_requests(owner_id,status,due_at); CREATE INDEX IF NOT EXISTS idx_refund_requests_customer_created ON refund_requests(customer_id,created_at);`) } catch (error) { console.error('refund schema migration failed', error) }
+try { db.exec("ALTER TABLE refund_requests ADD COLUMN payment_claimed INTEGER NOT NULL DEFAULT 0") } catch {}
 export default db
 
 try { db.exec("ALTER TABLE venues ADD COLUMN review_status TEXT NOT NULL DEFAULT 'approved'") } catch {}
